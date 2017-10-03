@@ -39,7 +39,7 @@ Responsibilities: Data
 
 === Lim Yan Hui, Victoria
 image::beanie.jpg[width="150", align="left"]
-{empty}[https://github.com/vicisapotato] [<<victorialim#, portfolio>>]
+{empty}[https://github.com/vicisapotato[github]] [<<victorialim#, portfolio>>]
 
 Role: Potato +
 Responsibilities: TBA
