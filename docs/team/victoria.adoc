@@ -36,7 +36,7 @@ include::../DeveloperGuide.adoc[tag=undoredo]
 
 ---
 
-=== Enhancement Proposed: Add command `remark`
+=== Enhancement Proposed:
 
 
 
