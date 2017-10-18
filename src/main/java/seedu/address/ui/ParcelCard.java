@@ -6,6 +6,7 @@ import java.util.Random;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
+import javafx.scene.control.TitledPane;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
@@ -34,7 +35,7 @@ public class ParcelCard extends UiPart<Region> {
     @FXML
     private HBox cardPane;
     @FXML
-    private Label trackingNumber;
+    private TitledPane trackingNumber;
     @FXML
     private Label name;
     @FXML
