@@ -116,7 +116,7 @@
 }
 
 .list-cell .label {
-    -fx-text-fill: white;
+    -fx-text-fill: #010504;
 }
 
 .cell_big_label {
