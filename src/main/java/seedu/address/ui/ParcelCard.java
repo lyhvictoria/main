@@ -5,6 +5,7 @@ import java.util.Random;
 
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
+import javafx.scene.control.Accordion;
 import javafx.scene.control.Label;
 import javafx.scene.control.TitledPane;
 import javafx.scene.layout.FlowPane;
@@ -33,6 +34,8 @@ public class ParcelCard extends UiPart<Region> {
     public final ReadOnlyParcel parcel;
 
     @FXML
+    private Accordion accord;
+    @FXML
     private HBox cardPane;
     @FXML
     private TitledPane trackingNumber;
@@ -55,6 +58,7 @@ public class ParcelCard extends UiPart<Region> {
         id.setText(displayedIndex + ". ");
         initTags(parcel);
         bindListeners(parcel);
+        //openParcelCard();
     }
 
     /**
@@ -112,4 +116,14 @@ public class ParcelCard extends UiPart<Region> {
         return id.getText().equals(card.id.getText())
                 && parcel.equals(card.parcel);
     }
+
+    /**
+     * Opens the parcelCard when the card has been selected
+     * If parcelCard is already expanded, it remains expanded
+     */
+    public void openParcelCard () {
+        accord.setExpandedPane(trackingNumber);
+        System.out.println(accord.getExpandedPane());
+    }
+
 }

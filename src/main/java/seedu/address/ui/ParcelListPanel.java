@@ -57,6 +57,7 @@ public class ParcelListPanel extends UiPart<Region> {
     private void scrollTo(int index) {
         Platform.runLater(() -> {
             parcelListView.scrollTo(index);
+            parcelListView.getSelectionModel().getSelectedItem().openParcelCard();
             parcelListView.getSelectionModel().clearAndSelect(index);
         });
     }
