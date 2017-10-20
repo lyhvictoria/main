@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Random;
 import java.util.logging.Logger;
 
-import com.google.common.eventbus.Subscribe;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.scene.control.Accordion;
@@ -63,7 +62,6 @@ public class ParcelCard extends UiPart<Region> {
         id.setText(displayedIndex + ". ");
         initTags(parcel);
         bindListeners(parcel);
-        //openParcelCard();
     }
 
     /**
@@ -127,10 +125,8 @@ public class ParcelCard extends UiPart<Region> {
      * Works the as if 'select' command has been used
      */
     @FXML
-    public void selectCard () {
+    public void selectCard() {
         raise(new ParcelPanelSelectionChangedEvent(this));
     }
-
-
 
 }
