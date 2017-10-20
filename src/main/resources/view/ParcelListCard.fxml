@@ -12,10 +12,10 @@
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
-<HBox id="cardPane" fx:id="cardPane" xmlns="http://javafx.com/javafx/8.0.111" xmlns:fx="http://javafx.com/fxml/1">
-   <Accordion id="accord" fx:id="accord" prefWidth="300.0">
+<HBox id="cardPane" fx:id="cardPane" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1">
+   <Accordion id="accord" fx:id="accord" prefWidth="320.0">
      <panes>
-       <TitledPane animated="false" fx:id="trackingNumber" styleClass="cell_big_label" text="\$trackingNumber">
+       <TitledPane fx:id="trackingNumber" animated="false" onMouseClicked="#selectCard" styleClass="cell_big_label" text="\$trackingNumber">
             <content>
               <GridPane>
                 <columnConstraints>

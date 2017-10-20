@@ -2,7 +2,9 @@ package seedu.address.ui;
 
 import java.util.HashMap;
 import java.util.Random;
+import java.util.logging.Logger;
 
+import com.google.common.eventbus.Subscribe;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.scene.control.Accordion;
@@ -11,6 +13,8 @@ import javafx.scene.control.TitledPane;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
+import seedu.address.commons.core.LogsCenter;
+import seedu.address.commons.events.ui.ParcelPanelSelectionChangedEvent;
 import seedu.address.model.parcel.ReadOnlyParcel;
 
 /**
@@ -22,6 +26,7 @@ public class ParcelCard extends UiPart<Region> {
     private static String[] colors = { "#cc4f4f", "#57b233", "#2696b5", "#5045c6", "#7739ba", "#b534a1", "black" };
     private static HashMap<String, String> tagColors = new HashMap<String, String>();
     private static Random random = new Random();
+    private final Logger logger = LogsCenter.getLogger(ParcelCard.class);
 
     /**
      * Note: Certain keywords such as "location" and "resources" are reserved keywords in JavaFX.
@@ -118,12 +123,14 @@ public class ParcelCard extends UiPart<Region> {
     }
 
     /**
-     * Opens the parcelCard when the card has been selected
-     * If parcelCard is already expanded, it remains expanded
+     * Selects the parcelCard when the card has been clicked
+     * Works the as if 'select' command has been used
      */
-    public void openParcelCard () {
-        accord.setExpandedPane(trackingNumber);
-        System.out.println(accord.getExpandedPane());
+    @FXML
+    public void selectCard () {
+        raise(new ParcelPanelSelectionChangedEvent(this));
     }
+
+
 
 }
