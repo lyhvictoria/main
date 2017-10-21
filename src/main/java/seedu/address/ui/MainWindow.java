@@ -21,6 +21,7 @@ import seedu.address.commons.core.LogsCenter;
 import seedu.address.commons.events.ui.ExitAppRequestEvent;
 import seedu.address.commons.events.ui.JumpToListRequestEvent;
 import seedu.address.commons.events.ui.ShowHelpRequestEvent;
+import seedu.address.commons.events.ui.ShowParcelListEvent;
 import seedu.address.commons.util.FxViewUtil;
 import seedu.address.logic.Logic;
 import seedu.address.model.UserPrefs;
@@ -219,9 +220,15 @@ public class MainWindow extends UiPart<Region> {
     }
 
     @FXML @Subscribe
-    private void handleShowParcelListEvent(JumpToListRequestEvent event) {
+    private void handleHideParcelListEvent(JumpToListRequestEvent event) {
         logger.info(LogsCenter.getEventHandlingLogMessage(event));
-        splitPanePlaceholder.setDividerPositions(0.9);
+        splitPanePlaceholder.setDividerPositions(1.0);
+    }
+
+    @FXML @Subscribe
+    private void handleShowParcelListEvent(ShowParcelListEvent event) {
+        logger.info(LogsCenter.getEventHandlingLogMessage(event));
+        splitPanePlaceholder.setDividerPositions(0.0);
     }
 
     @Subscribe
