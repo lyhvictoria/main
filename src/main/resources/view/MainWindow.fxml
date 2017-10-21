@@ -35,7 +35,7 @@
       <Insets bottom="5" left="10" right="10" top="5" />
     </padding>
   </StackPane>
-   <SplitPane fx:id="SplitPane" dividerPositions="0.5" orientation="VERTICAL">
+   <SplitPane fx:id="splitPanePlaceholder" dividerPositions="0.5" orientation="VERTICAL">
       <items>
       
        <StackPane fx:id="browserPlaceholder">
