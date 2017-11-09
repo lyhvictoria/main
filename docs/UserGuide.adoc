@@ -487,6 +487,15 @@ Examples:
 * `a` + kbd:[Tab] (auto-completes with `add` in the command line input)
 //end::autocomplete[]
 
+//tag::overduePopup[]
+=== Popup window for overdue parcels at
+
+When you startup Ark, if you have any parcels with an `OVERDUE` status in your parcel list,
+a popup window will appear notifying you that you have overdue parcels. Shown in figure XXX
+is what an example of the popup window looks like.
+
+//end::overduePopup[]
+
 === Saving the data
 
 Ark data are saved in the hard disk automatically after any command that changes the data. +

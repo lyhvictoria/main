@@ -66,9 +66,38 @@ include::../DeveloperGuide.adoc[tag=tabs]
 
 ---
 
-=== Enhancement Proposed: Add command `remark`
+=== Enhancement Added: Popup window for overdue parcels
 
-{Explain similar to the Undo/Redo feature above.}
+==== External behavior
+
+---
+#Start of Extract [from: User Guide]#
+
+include::../UserGuide.adoc[tag=overduePopup]
+
+#End of Extract#
+
+---
+
+==== Justification
+
+To remind users that they currently have overdue parcels in the list.
+Immediately alerting the user of overdue parcels right at the start whenever they startup
+the application.
+
+==== Implementation
+
+---
+#Start of Extract [from: Developer Guide]#
+
+include::../DeveloperGuide.adoc[tag=overduePopup]
+
+#End of Extract#
+
+---
+
+=== Enhancement Proposed:
+
 
 === Other contributions
 

@@ -462,6 +462,27 @@ just its size
 Certain properties of the application can be controlled (e.g App name, logging level) through the configuration file
 (default: `config.json`).
 
+//tag::overduePopup[]
+
+=== Popup Window for overdue parcels
+The Popup window enhancement will cause a new window be created when running `MainApp`
+if the `ObservableList<ReadOnlyParcel> uncompletedParcels` parcel list contains
+more than zero parcels with a status of `OVERDUE`. If there is no `OVERDUE` parcels, then the popup window
+will not show.
+
+**Aspect: When the overdue condition is checked** +
+
+* **Alternative 1 (current choice):** Check only at every startup of the application +
+** **Pros:** It serves it purpose of telling the user that there are overdue parcels at the start
+since there is little need to keep checking for overdue parcels throughout the run time of the application +
+** **Cons:** It will not popup again after startup of the application +
+* **Alternative 2:** Check after every command entered +
+** **Pros:** It would show every time a new overdue parcel is found instead of only at the start +
+** **Cons:** More difficult to implement and is not really needed since the user would know that there
+is a new overdue parcel since they would be involved in making it, either by `edit` or `add`.
+
+//end::overduePopup[]
+
 //tag::browser[]
 === Google Maps Search Browser
 
