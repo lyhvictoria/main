@@ -38,8 +38,8 @@ public class MainWindow extends UiPart<Region> {
 
     private static final String ICON = "/images/ark_icon.png";
     private static final String FXML = "MainWindow.fxml";
-    private static final int MIN_HEIGHT = 600;
-    private static final int MIN_WIDTH = 450;
+    private static final int MIN_HEIGHT = 700;
+    private static final int MIN_WIDTH = 700;
 
     private final Logger logger = LogsCenter.getLogger(this.getClass());
 
