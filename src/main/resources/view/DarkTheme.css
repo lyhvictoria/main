@@ -63,6 +63,20 @@
     -fx-alignment: CENTER;
     -fx-text-fill: #aab981;
 }
+
+.scroll-pane {
+    -fx-background-color: derive(#1d1d1d, 20%);
+
+}
+
+.scroll-pane .scroll-bar:horizontal {
+    -fx-background-color: derive(#1d1d1d, 20%);
+}
+
+.scroll-pane .scroll-bar .thumb {
+    -fx-background-color: derive(#1d1d1d, 20%);
+    -fx-background-insets: 3;
+}
 /* @@author */
 
 .table-view {
