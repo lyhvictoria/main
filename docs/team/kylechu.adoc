@@ -57,7 +57,8 @@ include::../DeveloperGuide.adoc[tag=autocomplete]
 * Updated the add command to make Phone and email fields optional
 (Pull requests https://github.com/CS2103AUG2017-T16-B1/main/pull/114[#114])
 
-* Wrote a command summary in the user guide
+
+* Wrote the Command Summary in the User guide as seen below:
 
 include::../UserGuide.adoc[tag=commandSummary]
 
