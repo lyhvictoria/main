@@ -120,14 +120,13 @@ public class TabCommandParser implements Parser<TabCommand> {
         logger.info(LogsCenter.getEventHandlingLogMessage(event));
         splitPanePlaceholder.setDividerPositions(0.6);
     }
-```
-###### \java\seedu\address\ui\MainWindow.java
-``` java
+
     @FXML @Subscribe
     private void handleShowParcelListEvent(ShowParcelListEvent event) {
         logger.info(LogsCenter.getEventHandlingLogMessage(event));
         splitPanePlaceholder.setDividerPositions(0.0);
     }
+
 ```
 ###### \java\seedu\address\ui\ParcelCard.java
 ``` java
@@ -153,6 +152,11 @@ public class TabCommandParser implements Parser<TabCommand> {
 ```
 ###### \java\seedu\address\ui\PopupOverdueParcelsWindow.java
 ``` java
+/**
+ * New window telling users of overdue parcels
+ * Takes in uncompleted parcel list from logic to get number of overdue parcels
+ * This window is set to hide after 7 seconds
+ */
 public class PopupOverdueParcelsWindow extends UiPart<Region> {
 
     private static final Logger logger = LogsCenter.getLogger(PopupOverdueParcelsWindow.class);
@@ -179,6 +183,10 @@ public class PopupOverdueParcelsWindow extends UiPart<Region> {
         contentPlaceholder.setText(CONTENT_TEXT + numOverdueParcels);
     }
 
+    /**
+     * Gets the number of parcels with the overdue status from logic uncompleted parcel list
+     * @return int numOverdueParcels
+     */
     private int getNumOverdueParcels (ObservableList<ReadOnlyParcel> uncompletedParcels) {
         int numOverdueParcels = 0;
 
@@ -192,7 +200,7 @@ public class PopupOverdueParcelsWindow extends UiPart<Region> {
     }
 
     /**
-     * Shows the help window.
+     * Shows the parcelsOverduePopup window, and hides the window after 7 seconds.
      * @throws IllegalStateException
      * <ul>
      *     <li>
@@ -209,27 +217,33 @@ public class PopupOverdueParcelsWindow extends UiPart<Region> {
      *     </li>
      * </ul>
      */
-    public void show () {
+    public void showAndHide () {
         logger.fine("Showing popup window for overdue.");
         dialogStage.show();
+        PauseTransition pause = new PauseTransition(Duration.seconds(7));
+        pause.setOnFinished(e -> dialogStage.hide());
+        pause.play();
     }
 ```
 ###### \java\seedu\address\ui\UiManager.java
 ``` java
-            if (overDueParcels(logic.getUncompletedParcelList())) {
+            //Popup window only shows if there are overdue parcels in the list
+            //Popup window will then hide itself after 7 seconds.
+            if (hasOverdueParcels(logic.getUncompletedParcelList())) {
                 PopupOverdueParcelsWindow popupOverdueParcelsWindow =
                         new PopupOverdueParcelsWindow(logic.getUncompletedParcelList());
-                popupOverdueParcelsWindow.show();
+                popupOverdueParcelsWindow.showAndHide();
             }
 ```
 ###### \java\seedu\address\ui\UiManager.java
 ``` java
     /**
      * Checks for presence of overdue parcels in parcel list
+     * by iterating through the uncompleted parcel list and checking the status of each parcel.
+     * Returns true the moment one parcel has an overdue status.
      */
-    public boolean overDueParcels (ObservableList<ReadOnlyParcel> uncompletedParcelList) {
+    public boolean hasOverdueParcels (ObservableList<ReadOnlyParcel> uncompletedParcelList) {
 
-        // if there are overdue parcels
         for (int i = 0; i < uncompletedParcelList.size(); i++) {
             if (uncompletedParcelList.get(i).getStatus().equals(Status.OVERDUE)) {
                 return true;
@@ -396,19 +410,17 @@ public class PopupOverdueParcelsWindow extends UiPart<Region> {
 ```
 ###### \resources\view\PopupOverdueParcelsWindow.fxml
 ``` fxml
-<StackPane styleClass="pane-with-border" xmlns="http://javafx.com/javafx/8.0.111" xmlns:fx="http://javafx.com/fxml/1">
+
+<StackPane styleClass="pane-with-border" stylesheets="@DarkTheme.css" xmlns="http://javafx.com/javafx/8.0.111" xmlns:fx="http://javafx.com/fxml/1">
    <children>
       <VBox>
          <children>
-            <Label alignment="CENTER" prefHeight="32.0" prefWidth="314.0" styleClass="cell_big_label" text="Overdue Parcels">
-               <font>
-                  <Font size="22.0" />
-               </font>
+            <Label alignment="CENTER" prefHeight="48.0" prefWidth="314.0" styleClass="label-bright" text="Overdue Parcels" textAlignment="CENTER">
                <padding>
                   <Insets bottom="10.0" />
                </padding>
             </Label>
-            <Label fx:id="contentPlaceholder" alignment="TOP_LEFT" prefHeight="187.0" prefWidth="312.0" styleClass="cell_small_label" text="\$Content" wrapText="true" />
+            <Label fx:id="contentPlaceholder" alignment="TOP_LEFT" prefHeight="128.0" prefWidth="312.0" styleClass="cell_big_label" text="\$Content" wrapText="true" />
          </children>
       </VBox>
    </children>

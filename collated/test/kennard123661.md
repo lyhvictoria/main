@@ -322,7 +322,7 @@ public class ImportCommandTest {
 
         ImportCommand importCommand = getImportCommandForParcel(parcels, modelManager);
         thrown.expect(CommandException.class);
-        thrown.expectMessage(MESSAGE_FAILURE_DUPLICATE_PARCELS);
+        thrown.expectMessage(MESSAGE_INVALID_DUPLICATE_PARCELS);
         importCommand.execute();
     }
 
@@ -417,55 +417,57 @@ public class ImportCommandParserTest {
     public final ExpectedException thrown = ExpectedException.none();
 
     @Test
-    public void parseImportFilePath_invalidInput_throwsIllegalValueException() throws Exception {
+    public void parseImportFilePath_invalidInput_throwsParseException() throws ParseException {
         thrown.expect(ParseException.class);
-        thrown.expectMessage(String.format(MESSAGE_INVALID_COMMAND_FORMAT, ImportCommand.MESSAGE_USAGE)
-                + "\nMore Info: " + MESSAGE_FILE_NOT_FOUND);
+        thrown.expectMessage(MESSAGE_FILE_NOT_FOUND);
         new ImportCommandParser().parse("Missing");
     }
 
     @Test
-    public void parseImportFilePath_notXmlFormat_throwsIllegalValueException() throws Exception {
+    public void parseImportFilePath_notXmlFormat_throwsParseException() throws ParseException {
         thrown.expect(ParseException.class);
-        thrown.expectMessage(String.format(MESSAGE_INVALID_COMMAND_FORMAT, ImportCommand.MESSAGE_USAGE)
-                + "\nMore Info: " + String.format(MESSAGE_INVALID_DATA,
-                "./data/import/testNotXmlFormatAddressBook.xml"));
-
+        thrown.expectMessage(String.format(MESSAGE_INVALID_DATA, "./data/import/testNotXmlFormatAddressBook.xml"));
         new ImportCommandParser().parse("testNotXmlFormatAddressBook");
     }
 
     @Test
-    public void parseImportFilePath_invalidFileName_throwsIllegalValueException() throws Exception {
+    public void parseImportFilePath_invalidFileName_throwsParseException() throws ParseException {
+        ImportCommandParser parser = new ImportCommandParser();
+
         thrown.expect(ParseException.class);
-        thrown.expectMessage(ImportCommandParser.MESSAGE_FILE_NAME_INVALID);
+        thrown.expectMessage(MESSAGE_INVALID_FILE_NAME);
 
-        new ImportCommandParser().parse("#!Hfas");
-
-        // directory traversal attempt
-        thrown.expect(ParseException.class);
-        thrown.expectMessage(ImportCommandParser.MESSAGE_FILE_NAME_INVALID);
-
-        new ImportCommandParser().parse("../addressBook");
+        parser.parse(""); // empty string
+        parser.parse("ark book"); // spaces are invalid
+        parser.parse("arkbook#"); // special symbols are invalid
+        parser.parse("arkbook.xml"); // no .xml (.xml auto-appended)
+        parser.parse("../addressBook"); // directory traversal attempt
     }
 
     @Test
-    public void parseImportFilePath_validInput_success() throws Exception {
-        ImportCommand importCommand = new ImportCommandParser().parse("testValidAddressBook");
+    public void parseImportFilePath_validInput_success() throws ParseException {
+        ImportCommandParser parser = new ImportCommandParser();
+
+        ImportCommand importCommand = parser.parse("testValidAddressBook");
+        assertTrue(importCommand instanceof ImportCommand);
+
+        importCommand = parser.parse("testAddressBookForImportSystem");
         assertTrue(importCommand instanceof ImportCommand);
     }
 
     @Test
-    public void isValidFileName() throws Exception {
-        assertTrue(ImportCommandParser.isValidFileName("123"));
-        assertTrue(ImportCommandParser.isValidFileName("arkbook"));
-        assertTrue(ImportCommandParser.isValidFileName("arkbook123"));
-        assertTrue(ImportCommandParser.isValidFileName("123arkbook123"));
-        assertTrue(ImportCommandParser.isValidFileName("ark_today"));
-        assertTrue(ImportCommandParser.isValidFileName("test_today123"));
+    public void isValidFileName() throws ParseException {
+        assertTrue(ImportCommandParser.isValidFileName("123")); // only numeric
+        assertTrue(ImportCommandParser.isValidFileName("arkbook")); // only alphabetical
+        assertTrue(ImportCommandParser.isValidFileName("_______")); // only underscore
 
-        assertFalse(ImportCommandParser.isValidFileName("ark test")); // spaces are invalid
-        assertFalse(ImportCommandParser.isValidFileName("1#!*#(!")); // special symbols are invalid
-        assertFalse(ImportCommandParser.isValidFileName("ark.xml")); // invalid
+        assertTrue(ImportCommandParser.isValidFileName("arkbook123")); // alphabetical and numeric
+        assertTrue(ImportCommandParser.isValidFileName("ark_today")); // alphabetical and number
+        assertTrue(ImportCommandParser.isValidFileName("12_34")); // alphabetical and underscore
+
+        assertFalse(ImportCommandParser.isValidFileName("ark book")); // spaces are invalid
+        assertFalse(ImportCommandParser.isValidFileName("arkbook#")); // special symbols are invalid
+        assertFalse(ImportCommandParser.isValidFileName("arkbook.xml")); // no .xml (.xml auto-appended)
     }
 
 }
@@ -500,55 +502,15 @@ public class ImportCommandParserTest {
         assertEquals(8, modelManager.getAddressBook().getParcelList().size());
         assertEquals(2, modelManager.getCompletedParcelList().size());
         assertEquals(6, modelManager.getUncompletedParcelList().size());
-
-        assertEquals(modelManager.getActiveList(), modelManager.getUncompletedParcelList());
-        modelManager.setActiveList(true);
-        assertEquals(modelManager.getActiveList(), modelManager.getCompletedParcelList());
     }
 
-    @Test
-    public void equals() {
-        AddressBook addressBook = new AddressBookBuilder().withParcel(ALICE).withParcel(BENSON).build();
-        AddressBook differentAddressBook = new AddressBook();
-        UserPrefs userPrefs = new UserPrefs();
 
-        // same values -> returns true
-        ModelManager modelManager = new ModelManager(addressBook, userPrefs);
-        ModelManager modelManagerCopy = new ModelManager(addressBook, userPrefs);
-        assertTrue(modelManager.equals(modelManagerCopy));
 
-        // same object -> returns true
-        assertTrue(modelManager.equals(modelManager));
-
-        // null -> returns false
-        assertFalse(modelManager.equals(null));
-
-        // different types -> returns false
-        assertFalse(modelManager.equals(5));
-
-        // different addressBook -> returns false
-        assertFalse(modelManager.equals(new ModelManager(differentAddressBook, userPrefs)));
-
-        // different filteredList -> returns false
-        String[] keywords = ALICE.getName().fullName.split("\\s+");
-        modelManager.updateFilteredParcelList(new NameContainsKeywordsPredicate(Arrays.asList(keywords)));
-        assertFalse(modelManager.equals(new ModelManager(addressBook, userPrefs)));
-
-        // resets modelManager to initial state for upcoming tests
-        modelManager.updateFilteredParcelList(PREDICATE_SHOW_ALL_PARCELS);
-
-        // different userPrefs -> returns true
-        UserPrefs differentUserPrefs = new UserPrefs();
-        differentUserPrefs.setAddressBookName("differentName");
-        assertTrue(modelManager.equals(new ModelManager(addressBook, differentUserPrefs)));
-    }
-
-}
 ```
 ###### \java\seedu\address\model\ModelStub.java
 ``` java
     @Override
-    public void setActiveList(boolean isCompleted) {
+    public void setActiveList(JumpToTabRequestEvent event) {
         fail("This method should not be called.");
     }
 ```
@@ -919,7 +881,7 @@ public class TrackingNumberTest {
 
         // test for log message.
         String capturedLog = testLogger.getTestCapturedLog();
-        String expectedLogMessage = "WARNING - AddressBook not present, backup not possible.\n";
+        String expectedLogMessage = "WARNING - Storage file not present, backup not possible.\n";
         assertEquals(capturedLog, expectedLogMessage);
 
         // testing if backup exists
@@ -941,14 +903,14 @@ public class TrackingNumberTest {
         StorageManager backupStorageManager = new StorageManager(addressBookStorage, userPrefsStorage);
 
         String capturedLog = testLogger.getTestCapturedLog();
-        String expectedLog = "INFO - AddressBook present, back up success!\n";
+        String expectedLog = "INFO - Storage file present, back up success!\n";
         assertEquals(capturedLog, expectedLog);
 
         // checks that the backup properly backups the new file.
-        Optional<ReadOnlyAddressBook> backupAddressBookOptional = backupStorageManager
+        Optional<ReadOnlyAddressBook> addressBookBackupOptional = backupStorageManager
                 .readAddressBook(backupStorageManager.getBackupStorageFilePath());
-        AddressBook backupAddressBook = new AddressBook(backupAddressBookOptional.get());
-        assertEquals(backupAddressBook, original);
+        AddressBook addressBookBackup = new AddressBook(addressBookBackupOptional.get());
+        assertEquals(original, addressBookBackup);
 
         // checks that the file does not backup on every save
         AddressBook editedBook = new AddressBook();
@@ -957,14 +919,14 @@ public class TrackingNumberTest {
                 .readAddressBook(backupStorageManager.getAddressBookFilePath());
 
         AddressBook mainAddressBook = new AddressBook(mainAddressBookOptional.get());
-        assertFalse(mainAddressBook.equals(backupAddressBook));
+        assertFalse(mainAddressBook.equals(addressBookBackup));
 
         // checks that the backup only saves on the initialization of another storage manager.
         StorageManager anotherStorageManager = new StorageManager(addressBookStorage, userPrefsStorage);
-        backupAddressBookOptional = anotherStorageManager
+        addressBookBackupOptional = anotherStorageManager
                 .readAddressBook(backupStorageManager.getBackupStorageFilePath());
-        backupAddressBook = new AddressBook(backupAddressBookOptional.get());
-        assertEquals(editedBook, backupAddressBook);
+        addressBookBackup = new AddressBook(addressBookBackupOptional.get());
+        assertEquals(editedBook, addressBookBackup);
     }
 
     @Test
@@ -977,7 +939,7 @@ public class TrackingNumberTest {
     @Test
     public void backUpCommandTest() throws IOException, DataConversionException {
         AddressBook original = getTypicalAddressBook();
-        storageManager.backupAddressBook(original);
+        storageManager.backup(original);
         Optional<ReadOnlyAddressBook> backupAddressBookOptional = storageManager
                 .readAddressBook(storageManager.getBackupStorageFilePath());
         AddressBook backupAddressBook = new AddressBook(backupAddressBookOptional.get());
@@ -1163,12 +1125,14 @@ public class TrackingNumberTest {
 public class ImportCommandSystemTest extends AddressBookSystemTest {
 
     private static final String STORAGE_FILE = "testAddressBookForImportSystem";
+    private static final String FILE_PATH = IMPORT_FILE_DIRECTORY + STORAGE_FILE + ".xml";
+    private static final XmlAddressBookStorage storage = new XmlAddressBookStorage(FILE_PATH);
+    private static AddressBook addressBook;
 
     @Before
     public void start() throws Exception {
         // reset the storage file used in ImportCommandSystemTest
-        AddressBook addressBook = new AddressBookBuilder().build();
-        new XmlAddressBookStorage("./data/import/" + STORAGE_FILE + ".xml").saveAddressBook(addressBook);
+        updateStorageAndAddressBook();
     }
 
     @Test
@@ -1176,13 +1140,9 @@ public class ImportCommandSystemTest extends AddressBookSystemTest {
         Model model = getModel();
 
         /* Case: import parcels without tags to a non-empty address book, command with leading spaces and trailing
-         * spaces -> added
-         */
-        AddressBook addressBook = new AddressBookBuilder().withParcel(AMY).withParcel(BOB).build();
-        XmlAddressBookStorage storage = new XmlAddressBookStorage(
-                "./data/import/" + STORAGE_FILE + ".xml");
-        storage.saveAddressBook(addressBook);
-
+        spaces -> added */
+        updateStorageAndAddressBook(new ParcelBuilder(AMY).withTags().build(),
+                new ParcelBuilder(BOB).withTags().build());
         List<ReadOnlyParcel> parcelsAdded;
         List<ReadOnlyParcel> duplicateParcels = new ArrayList<>();
         List<ReadOnlyParcel> parcels = addressBook.getParcelList();
@@ -1203,87 +1163,82 @@ public class ImportCommandSystemTest extends AddressBookSystemTest {
 
         /* Case: add a duplicate parcel -> rejected */
         command = ImportCommand.COMMAND_WORD + " " + STORAGE_FILE;
-        assertCommandFailure(command, ImportCommand.MESSAGE_FAILURE_DUPLICATE_PARCELS);
+        assertCommandFailure(command, ImportCommand.MESSAGE_INVALID_DUPLICATE_PARCELS);
 
         /* Case: import an addressbook xml file containing duplicate parcels except with different tags -> rejected */
-        // AddressBook#addAllParcels(List<ReadOnlyParcel>)
-        addressBook = new AddressBookBuilder().withParcel(new ParcelBuilder(AMY).withTags(Tag.HEAVY.toString()).build())
-                .withParcel(new ParcelBuilder(BOB).withTags(Tag.FRAGILE.toString()).build()).build();
-        storage.saveAddressBook(addressBook);
+        updateStorageAndAddressBook(new ParcelBuilder(AMY).withTags(Tag.HEAVY.toString()).build(),
+                new ParcelBuilder(BOB).withTags(Tag.FRAGILE.toString()).build());
         command = ImportCommand.COMMAND_WORD + " " + STORAGE_FILE;
-        assertCommandFailure(command, ImportCommand.MESSAGE_FAILURE_DUPLICATE_PARCELS);
+        assertCommandFailure(command, ImportCommand.MESSAGE_INVALID_DUPLICATE_PARCELS);
 
         /* Case: imports parcels with all fields same as other parcels in the address book except name -> imported */
-        addressBook = new AddressBookBuilder().withParcel(new ParcelBuilder(AMY).withName("Kyle").build())
-                .withParcel(new ParcelBuilder(BOB).withName("John").build()).build();
-        storage.saveAddressBook(addressBook);
+        updateStorageAndAddressBook(new ParcelBuilder(AMY).withName("Kyle").build(),
+                new ParcelBuilder(BOB).withName("John").build());
         parcelsAdded = addressBook.getParcelList();
         assertCommandSuccess(command, parcelsAdded, parcelsAdded, duplicateParcels);
 
         /* Case: imports parcels with all fields same as other parcels in the address book except phone -> imported */
-        addressBook = new AddressBookBuilder().withParcel(new ParcelBuilder(AMY).withPhone("98547321").build())
-                .withParcel(new ParcelBuilder(BOB).withPhone("96758989").build()).build();
-        storage.saveAddressBook(addressBook);
+        updateStorageAndAddressBook(new ParcelBuilder(AMY).withPhone("98547321").build(),
+                new ParcelBuilder(BOB).withPhone("96758989").build());
         parcelsAdded = addressBook.getParcelList();
         assertCommandSuccess(command, parcelsAdded, parcelsAdded, duplicateParcels);
 
         /* Case: imports parcels with all fields same as other parcels in the address book except email -> imported */
-        addressBook = new AddressBookBuilder().withParcel(new ParcelBuilder(AMY).withEmail("amy@gmail.com").build())
-                .withParcel(new ParcelBuilder(BOB).withEmail("bob@gmail.com").build()).build();
-        storage.saveAddressBook(addressBook);
+        updateStorageAndAddressBook(new ParcelBuilder(AMY).withEmail("amy@gmail.com").build(),
+                new ParcelBuilder(BOB).withEmail("bob@gmail.com").build());
         parcelsAdded = addressBook.getParcelList();
         assertCommandSuccess(command, parcelsAdded, parcelsAdded, duplicateParcels);
 
         /* Case: imports parcels with all fields same as another parcel in the address book
          * except address -> imported
          */
-        addressBook = new AddressBookBuilder().withParcel(new ParcelBuilder(AMY).withAddress("Amy Street S123661")
-                .build()).withParcel(new ParcelBuilder(BOB).withAddress("BOB Street S456123").build()).build();
-        storage.saveAddressBook(addressBook);
+        updateStorageAndAddressBook(new ParcelBuilder(AMY).withAddress("Amy Street S123661").build(),
+                new ParcelBuilder(BOB).withAddress("BOB Street S456123").build());
         parcelsAdded = addressBook.getParcelList();
         assertCommandSuccess(command, parcelsAdded, parcelsAdded, duplicateParcels);
 
         /* Case: add a parcel with all fields same as another parcel in the address book
          * except tracking number -> imported
          */
-        addressBook = new AddressBookBuilder().withParcel(new ParcelBuilder(AMY).withTrackingNumber("RR123564897SG")
-                .build()).withParcel(new ParcelBuilder(BOB).withTrackingNumber("RR123564897SG").build()).build();
-        storage.saveAddressBook(addressBook);
+        updateStorageAndAddressBook(new ParcelBuilder(AMY).withTrackingNumber("RR123564897SG").build(),
+                new ParcelBuilder(BOB).withTrackingNumber("RR123564897SG").build());
         parcelsAdded = addressBook.getParcelList();
         assertCommandSuccess(command, parcelsAdded, parcelsAdded, duplicateParcels);
 
         /* Case: add a parcel with all fields same as another parcel in the address book
          * except delivery date -> imported
          */
-        addressBook = new AddressBookBuilder().withParcel(new ParcelBuilder(AMY).withDeliveryDate("12-01-2017")
-                .build()).withParcel(new ParcelBuilder(BOB).withDeliveryDate("12-01-2017").build()).build();
-        storage.saveAddressBook(addressBook);
+        updateStorageAndAddressBook(new ParcelBuilder(AMY).withDeliveryDate("12-01-2017").build(),
+                new ParcelBuilder(BOB).withDeliveryDate("12-01-2017").build());
         parcelsAdded = addressBook.getParcelList();
         assertCommandSuccess(command, parcelsAdded, parcelsAdded, duplicateParcels);
 
         /* Case: filters the parcel list before importing -> imported */
         executeCommand(FindCommand.COMMAND_WORD + " " + KEYWORD_MATCHING_MEIER);
         assert getModel().getFilteredParcelList().size() < getModel().getAddressBook().getParcelList().size();
-        addressBook = new AddressBookBuilder().withParcel(IDA).build();
-        storage.saveAddressBook(addressBook);
+        updateStorageAndAddressBook(IDA);
         parcelsAdded = addressBook.getParcelList();
         assertCommandSuccess(command, parcelsAdded, parcelsAdded, duplicateParcels);
 
-        /* Case: imports to ann empty address book -> added */
+        /* Case: imports to an empty address book -> added */
         executeCommand(ClearCommand.COMMAND_WORD);
-        addressBook = new AddressBookBuilder().withParcel(IDA).withParcel(BENSON).build();
-        parcelsAdded = addressBook.getParcelList();
-        storage.saveAddressBook(addressBook);
         assert getModel().getAddressBook().getParcelList().size() == 0;
+        updateStorageAndAddressBook(IDA,  BENSON);
+        parcelsAdded = addressBook.getParcelList();
         assertCommandSuccess(command, parcelsAdded, parcelsAdded, duplicateParcels);
 
-        /* Case: selects first card in the parcel list, import parcels -> import, card selection remains unchanged */
+        /* Case: selects first card in the parcel list, import parcels -> import, card selection removed */
         executeCommand(SelectCommand.COMMAND_WORD + " 1");
         assert getParcelListPanel().isAnyCardSelected();
-        addressBook = new AddressBookBuilder().withParcel(CARL).withParcel(ALICE).build();
-        storage.saveAddressBook(addressBook);
+        updateStorageAndAddressBook(CARL, ALICE);
         parcelsAdded = addressBook.getParcelList();
         assertCommandSuccess(command, parcelsAdded, parcelsAdded, duplicateParcels);
+        assert !getParcelListPanel().isAnyCardSelected() : "Selection should be gone";
+
+        /* Case: file is empty -> rejected */
+        updateStorageAndAddressBook();
+        assert addressBook.getParcelList().size() == 0;
+        assertCommandFailure(command, ImportCommand.MESSAGE_INVALID_FILE_EMPTY);
 
         /* Case: invalid keyword -> rejected */
         command = "imports " + STORAGE_FILE;
@@ -1291,15 +1246,16 @@ public class ImportCommandSystemTest extends AddressBookSystemTest {
 
         /* Case: missing file -> rejected */
         command = "import " + "missing";
-        assertCommandFailure(command, String.format(MESSAGE_INVALID_COMMAND_FORMAT,
-                ImportCommand.MESSAGE_USAGE) + "\nMore Info: " + MESSAGE_FILE_NOT_FOUND);
+        assertCommandFailure(command, MESSAGE_FILE_NOT_FOUND);
 
         /* Case: invalid xml file -> rejected */
         command = "import " + "testNotXmlFormatAddressBook";
-        assertCommandFailure(command, String.format(MESSAGE_INVALID_COMMAND_FORMAT,
-                ImportCommand.MESSAGE_USAGE) + "\nMore Info: " + String.format(MESSAGE_INVALID_DATA,
-                "./data/import/testNotXmlFormatAddressBook.xml"));
+        assertCommandFailure(command, String.format(MESSAGE_INVALID_DATA,
+                IMPORT_FILE_DIRECTORY + "testNotXmlFormatAddressBook.xml"));
 
+        /* Case: invalid file name -> rejected */
+        command = "import " + "testNotXmlFormatAddressBook.xml";
+        assertCommandFailure(command, MESSAGE_INVALID_FILE_NAME);
     }
 
     @After
@@ -1307,6 +1263,24 @@ public class ImportCommandSystemTest extends AddressBookSystemTest {
         // reset the storage file used in ImportCommandSystemTest
         AddressBook addressBook = new AddressBookBuilder().build();
         new XmlAddressBookStorage("./data/import/" + STORAGE_FILE + ".xml").saveAddressBook(addressBook);
+    }
+
+    /**
+     * Creates a new {@link AddressBook} and adds {@link ReadOnlyParcel} in parcels to the newly created
+     * {@link AddressBook}. Saves the newly created {@link AddressBook} into the {@code storage}
+     *
+     * @param parcels the list of parcels to add into the newly created {@link AddressBook}
+     * @throws IOException if {@code storage} is not a valid storage file/path
+     */
+    private static void updateStorageAndAddressBook(ReadOnlyParcel... parcels) throws IOException {
+        AddressBookBuilder addressBookBuilder = new AddressBookBuilder();
+
+        for (ReadOnlyParcel parcel : parcels) {
+            addressBookBuilder.withParcel(parcel);
+        }
+
+        addressBook = addressBookBuilder.build();
+        storage.saveAddressBook(addressBook);
     }
 
     /**
@@ -1337,7 +1311,6 @@ public class ImportCommandSystemTest extends AddressBookSystemTest {
     private void assertCommandSuccess(String command, Model expectedModel, String expectedResultMessage) {
         executeCommand(command);
         assertApplicationDisplaysExpected("", expectedResultMessage, expectedModel);
-        assertSelectedCardUnchanged();
         assertCommandBoxShowsDefaultStyle();
         assertStatusBarUnchangedExceptSyncStatus();
     }

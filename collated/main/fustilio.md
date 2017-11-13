@@ -1,55 +1,699 @@
 # fustilio
-###### \java\seedu\address\logic\commands\DeleteTagCommand.java
+###### \java\seedu\address\bot\ArkBot.java
 ``` java
-package seedu.address.logic.commands;
+package seedu.address.bot;
 
+import static org.telegram.abilitybots.api.objects.Flag.PHOTO;
+import static seedu.address.commons.core.Messages.MESSAGE_INVALID_COMMAND_FORMAT;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Objects;
+import java.util.logging.Logger;
+
+import org.telegram.abilitybots.api.bot.AbilityBot;
+import org.telegram.abilitybots.api.objects.Ability;
+import org.telegram.abilitybots.api.objects.Locality;
+import org.telegram.abilitybots.api.objects.MessageContext;
+import org.telegram.abilitybots.api.objects.Privacy;
+import org.telegram.abilitybots.api.sender.MessageSender;
+import org.telegram.telegrambots.api.methods.GetFile;
+import org.telegram.telegrambots.api.methods.send.SendMessage;
+import org.telegram.telegrambots.api.objects.File;
+import org.telegram.telegrambots.api.objects.PhotoSize;
+import org.telegram.telegrambots.api.objects.Update;
+import org.telegram.telegrambots.exceptions.TelegramApiException;
+
+import com.google.common.annotations.VisibleForTesting;
+
+import javafx.application.Platform;
+import javafx.collections.ObservableList;
+import seedu.address.bot.parcel.DisplayParcel;
+import seedu.address.bot.parcel.ParcelParser;
+import seedu.address.bot.qrcode.QRcodeAnalyser;
+import seedu.address.bot.qrcode.exceptions.QRreadException;
+import seedu.address.commons.core.LogsCenter;
+import seedu.address.logic.Logic;
+import seedu.address.logic.commands.AddCommand;
+import seedu.address.logic.commands.DeleteCommand;
+import seedu.address.logic.commands.EditCommand;
+import seedu.address.logic.commands.FindCommand;
+import seedu.address.logic.commands.ListCommand;
+import seedu.address.logic.commands.RedoCommand;
+import seedu.address.logic.commands.UndoCommand;
 import seedu.address.logic.commands.exceptions.CommandException;
-import seedu.address.model.tag.Tag;
-import seedu.address.model.tag.exceptions.TagInternalErrorException;
-import seedu.address.model.tag.exceptions.TagNotFoundException;
+import seedu.address.logic.parser.exceptions.ParseException;
+import seedu.address.model.Model;
+import seedu.address.model.parcel.ReadOnlyParcel;
 
 /**
- * Deletes a tag from all parcels from the address book.
+ * Arkbot contains all of the commands available for use.
  */
-public class DeleteTagCommand extends UndoableCommand {
+public class ArkBot extends AbilityBot {
 
-    public static final String COMMAND_WORD = "deleteTag";
+    public static final String BOT_MESSAGE_FAILURE = "Oh dear, something went wrong! Please try again!";
+    public static final String BOT_MESSAGE_SUCCESS = "%s command has been successfully executed!";
+    public static final String BOT_MESSAGE_START = "Welcome to ArkBot, your friendly companion to ArkBot on Desktop.\n"
+                                                 + "Over here, you can interface with your Desktop application with "
+                                                 + "the following functions /add, /list, /delete, /undo, /redo, "
+                                                 + "/complete, /cancel and /help.";
+    public static final String BOT_MESSAGE_COMPLETE_COMMAND = "Please upload QR code to complete delivery.\n"
+                                                            + "Type \"/cancel\" to stop uploading process.";
+    public static final String BOT_MESSAGE_CANCEL_COMMAND = "QR Code upload successfully cancelled!";
+    public static final String BOT_MESSAGE_HELP = "The commands available to ArkBot v1.5 are as follows: \n"
+                                                + "/all Parcel Details - Adds a parcel.\n"
+                                                + "/list - Lists uncompleted parcel deliveries.\n"
+                                                + "/delete Parcel Index - Deletes a parcel.\n"
+                                                + "/undo - Undo a command.\n"
+                                                + "/redo - Redo a command.\n"
+                                                + "/complete Parcel Index - Marks a parcel as completed.\n"
+                                                + "/complete - Activates `listen` mode.\n"
+                                                + "/cancel - Cancels `listen` mode.\n"
+                                                + "/help - Brings up this dialogue again.\n\n"
+                                                + "In `listen` mode, ArkBot will wait for a QR code of a parcel "
+                                                + "to be marked as completed. Otherwise, ArkBot "
+                                                + "will return the details of the parcel embedded in the QR code.\n\n"
+                                                + "Refer to our [User Guide](https://github.com/CS2103AUG2017-T16-B1"
+                                                + "/main/blob/master/docs/UserGuide.adoc) for more information.";
+    private static final String BOT_SET_COMPLETED = "s/Completed";
+    private static final String DEFAULT_BOT_TOKEN = "339790464:AAGUN2BmhnU0I2B2ULenDdIudWyv1d4OTqY";
+    private static final String DEFAULT_BOT_USERNAME = "ArkBot";
+    private static final Privacy PRIVACY_SETTING = Privacy.PUBLIC;
 
-    public static final String MESSAGE_USAGE = COMMAND_WORD
-            + ": Deletes the tag from all parcels in the address book.\n"
-            + "Parameters: Tag name\n"
-            + "Example: " + COMMAND_WORD + " friends";
+    private static final Logger logger = LogsCenter.getLogger(ArkBot.class);
 
-    public static final String MESSAGE_DELETE_TAG_SUCCESS = "Deleted Tag: %1$s";
-    public static final String MESSAGE_INVALID_DELETE_TAG_NOT_FOUND = "Tag not found: %1$s";
+    private Logic logic;
+    private Model model;
+    private boolean waitingForImage;
 
-    private final Tag targetTag;
-
-    public DeleteTagCommand(Tag targetTag) {
-        this.targetTag = targetTag;
+    public ArkBot(Logic logic, Model model, String botToken, String botUsername) {
+        super(botToken, botUsername);
+        this.logic = logic;
+        this.model = model;
+        this.waitingForImage = false;
+        logger.info("ArkBot successfully booted up.");
     }
 
-    @Override
-    public CommandResult executeUndoableCommand() throws CommandException {
+    /**
+     * Replicates the effects of AddCommand on ArkBot.
+     */
+    public Ability startCommand() {
+        return Ability
+                .builder()
+                .name("start")
+                .info("welcomes the user to ArkBot")
+                .input(0)
+                .locality(Locality.ALL)
+                .privacy(PRIVACY_SETTING)
+                .action(ctx -> Platform.runLater(() -> sender.send(BOT_MESSAGE_START, ctx.chatId())))
+                .build();
+    }
 
-        Tag tagToDelete = targetTag;
+    /**
+     * Replicates the effects of AddCommand on ArkBot.
+     */
+    public Ability addCommand() {
+        return Ability
+                .builder()
+                .name(AddCommand.COMMAND_WORD)
+                .info("adds parcel to list")
+                .input(0)
+                .locality(Locality.ALL)
+                .privacy(PRIVACY_SETTING)
+                .action(ctx -> Platform.runLater(() -> {
+                    try {
+                        logic.execute(AddCommand.COMMAND_WORD + " "
+                                + combineArguments(ctx.arguments()));
+                        sender.send(String.format(BOT_MESSAGE_SUCCESS, AddCommand.COMMAND_WORD), ctx.chatId());
+                    } catch (CommandException | ParseException e) {
+                        sender.send(String.format(MESSAGE_INVALID_COMMAND_FORMAT, AddCommand.MESSAGE_USAGE),
+                                ctx.chatId());
+                    }
+                }))
+                .build();
+    }
 
-        try {
-            model.deleteTag(tagToDelete);
-        } catch (TagInternalErrorException tiee) {
-            throw new CommandException(MESSAGE_USAGE);
-        } catch (TagNotFoundException tnfe) {
-            throw new CommandException(String.format(MESSAGE_INVALID_DELETE_TAG_NOT_FOUND, tagToDelete));
+    /**
+     * Replicates the effects of ListCommand on ArkBot.
+     */
+    public Ability listCommand() {
+        return Ability
+                .builder()
+                .name(ListCommand.COMMAND_WORD)
+                .info("lists all parcels")
+                .input(0)
+                .locality(Locality.ALL)
+                .privacy(PRIVACY_SETTING)
+                .action(ctx -> Platform.runLater(() -> {
+                    try {
+                        logic.execute(ListCommand.COMMAND_WORD + " "
+                                + combineArguments(ctx.arguments()));
+                        ObservableList<ReadOnlyParcel> parcels = model.getUncompletedParcelList();
+                        sender.send(parseDisplayParcels(formatParcelsForBot(parcels)),
+                                ctx.chatId());
+                    } catch (CommandException | ParseException e) {
+                        sender.send("Sorry, I don't understand.", ctx.chatId());
+                    }
+                }))
+                .build();
+    }
+
+    /**
+     * Replicates the effects of DeleteCommand on ArkBot.
+     */
+    public Ability deleteCommand() {
+        return Ability
+                .builder()
+                .name(DeleteCommand.COMMAND_WORD)
+                .info("deletes parcel at selected index")
+                .input(0)
+                .locality(Locality.ALL)
+                .privacy(PRIVACY_SETTING)
+                .action((MessageContext ctx) -> Platform.runLater(() -> {
+                    try {
+                        logic.execute(DeleteCommand.COMMAND_WORD + " "
+                                + combineArguments(ctx.arguments()));
+                        ObservableList<ReadOnlyParcel> parcels = model.getUncompletedParcelList();
+                        sender.send(parseDisplayParcels(formatParcelsForBot(parcels)), ctx.chatId());
+                    } catch (CommandException | ParseException e) {
+                        sender.send(BOT_MESSAGE_FAILURE, ctx.chatId());
+                    } catch (NullPointerException e) {
+                        e.printStackTrace();
+                    }
+                }))
+                .build();
+    }
+
+    /**
+     * Replicates the effects of RedoCommand on ArkBot.
+     */
+    public Ability redoCommand() {
+        return Ability
+                .builder()
+                .name(RedoCommand.COMMAND_WORD)
+                .info("deletes parcel at selected index")
+                .input(0)
+                .locality(Locality.ALL)
+                .privacy(PRIVACY_SETTING)
+                .action((MessageContext ctx) -> Platform.runLater(() -> {
+                    try {
+                        logic.execute(RedoCommand.COMMAND_WORD);
+                        sender.send(String.format(BOT_MESSAGE_SUCCESS, RedoCommand.COMMAND_WORD), ctx.chatId());
+                    } catch (CommandException | ParseException e) {
+                        sender.send(BOT_MESSAGE_FAILURE, ctx.chatId());
+                    }
+                }))
+                .build();
+    }
+
+    /**
+     * Replicates the effects of UndoCommand on ArkBot.
+     */
+    public Ability undoCommand() {
+        return Ability
+                .builder()
+                .name(UndoCommand.COMMAND_WORD)
+                .info("deletes parcel at selected index")
+                .input(0)
+                .locality(Locality.ALL)
+                .privacy(PRIVACY_SETTING)
+                .action((MessageContext ctx) -> Platform.runLater(() -> {
+                    try {
+                        logic.execute(UndoCommand.COMMAND_WORD);
+                        sender.send(String.format(BOT_MESSAGE_SUCCESS, UndoCommand.COMMAND_WORD), ctx.chatId());
+                    } catch (CommandException | ParseException e) {
+                        sender.send(BOT_MESSAGE_FAILURE, ctx.chatId());
+                    }
+                }))
+                .build();
+    }
+
+    /**
+     * Replicates the effects of FindCommand on ArkBot.
+     */
+    public Ability findCommand() {
+        return Ability
+                .builder()
+                .name(FindCommand.COMMAND_WORD)
+                .info("adds parcel to list")
+                .input(0)
+                .locality(Locality.ALL)
+                .privacy(PRIVACY_SETTING)
+                .action(ctx -> Platform.runLater(() -> {
+                    try {
+                        logic.execute(FindCommand.COMMAND_WORD + " "
+                                + combineArguments(ctx.arguments()));
+                        ObservableList<ReadOnlyParcel> parcels = model.getUncompletedParcelList();
+                        sender.send(parseDisplayParcels(formatParcelsForBot(parcels)), ctx.chatId());
+                    } catch (CommandException | ParseException e) {
+                        sender.send(String.format(MESSAGE_INVALID_COMMAND_FORMAT, FindCommand.MESSAGE_USAGE),
+                                ctx.chatId());
+                    }
+                }))
+                .build();
+    }
+
+    /**
+     * Command to complete tasks with QR code or number
+     */
+    public Ability completeCommand() {
+        return Ability
+                .builder()
+                .name("complete")
+                .info("completes a parcel in list")
+                .input(0)
+                .locality(Locality.ALL)
+                .privacy(PRIVACY_SETTING)
+                .action(ctx -> Platform.runLater(() -> {
+                    String input = combineArguments(ctx.arguments());
+                    try {
+                        if (input.trim().equals("")) {
+                            this.waitingForImage = true;
+                            sender.send(BOT_MESSAGE_COMPLETE_COMMAND, ctx.chatId());
+                        } else if (containsAllNumbers(input.trim())) {
+                            logic.execute(EditCommand.COMMAND_WORD + " "
+                                    + input + BOT_SET_COMPLETED);
+                            ObservableList<ReadOnlyParcel> parcels = model.getUncompletedParcelList();
+                            sender.send(parseDisplayParcels(formatParcelsForBot(parcels)), ctx.chatId());
+                        } else {
+                            sender.send(BOT_MESSAGE_FAILURE, ctx.chatId());
+                        }
+                    } catch (CommandException | ParseException e) {
+                        sender.send(BOT_MESSAGE_FAILURE, ctx.chatId());
+                    }
+                }))
+                .build();
+    }
+
+    /**
+     * Command to cancel waiting for a QR to mark as completed.
+     */
+    public Ability cancelCommand() {
+        return Ability
+                .builder()
+                .name("cancel")
+                .info("cancels QR code upload")
+                .input(0)
+                .locality(Locality.ALL)
+                .privacy(PRIVACY_SETTING)
+                .action(ctx -> Platform.runLater(() -> {
+                    this.waitingForImage = false;
+                    sender.send(BOT_MESSAGE_CANCEL_COMMAND, ctx.chatId());
+                }))
+                .build();
+    }
+
+    /**
+     * Command to advise user on usage of bot.
+     */
+    public Ability helpCommand() {
+        return Ability
+                .builder()
+                .name("help")
+                .info("adds parcel to list")
+                .input(0)
+                .locality(Locality.ALL)
+                .privacy(PRIVACY_SETTING)
+                .action(ctx -> Platform.runLater(() -> {
+                    try {
+                        sender.sendMessage(new SendMessage().setText(BOT_MESSAGE_HELP)
+                                                                .setChatId(ctx.chatId())
+                                                                .enableMarkdown(true));
+                    } catch (TelegramApiException e) {
+                        e.printStackTrace();
+                    }
+                }))
+                .build();
+    }
+
+    /**
+     * Takes in the array of arguments that is parsed into ArkBot and
+     * returns a formatted string.
+     */
+    private String combineArguments(String[] arguments) {
+        String result = "";
+
+        for (int i = 0; i < arguments.length; i++) {
+            result += arguments[i] + " ";
         }
 
-        return new CommandResult(String.format(MESSAGE_DELETE_TAG_SUCCESS, tagToDelete));
+        return result;
+    }
+
+    /**
+     * Filters the list of parcels to only show Name, Address and Phone number
+     * attributed to each parcel.
+     */
+    public ArrayList<DisplayParcel> formatParcelsForBot(ObservableList<ReadOnlyParcel> parcels) {
+        ArrayList<DisplayParcel> toDisplay = new ArrayList<>();
+
+        Iterator<ReadOnlyParcel> parcelIterator = parcels.iterator();
+
+        while (parcelIterator.hasNext()) {
+            ReadOnlyParcel currParcel = parcelIterator.next();
+            DisplayParcel displayed = new DisplayParcel(currParcel.getName(), currParcel.getAddress(),
+                    currParcel.getPhone());
+            toDisplay.add(displayed);
+        }
+
+        return toDisplay;
+    }
+
+    /**
+     * Formats a list of Parcels to be displayed on ArkBot
+     */
+    public String parseDisplayParcels(ArrayList<DisplayParcel> displayParcels) {
+        if (displayParcels.size() == 0) {
+            return "No parcels to be displayed.";
+        } else {
+            String result = "";
+            for (int i = 0; i < displayParcels.size(); i++) {
+                result += (i + 1) + ". " + displayParcels.get(i).toString() + "\n";
+            }
+
+            return result;
+        }
     }
 
     @Override
-    public boolean equals(Object other) {
-        return other == this // short circuit if same object
-                || (other instanceof DeleteTagCommand // instanceof handles nulls
-                && this.targetTag.equals(((DeleteTagCommand) other).targetTag)); // state check
+    public int creatorId() {
+        return 0;
+    }
+
+    @Override
+    public boolean checkGlobalFlags(Update update) {
+        return true;
+    }
+
+    /**
+     * This ability has an extra "flag". It needs a photo to activate.
+     */
+    public Ability onPhotoCommand() {
+        return Ability
+                .builder()
+                .name(DEFAULT)
+                .flag(PHOTO)
+                .info("receives Photos")
+                .input(0)
+                .locality(Locality.ALL)
+                .privacy(PRIVACY_SETTING)
+                .action((MessageContext ctx) -> Platform.runLater(() -> {
+                    Update update = ctx.update();
+                    if (update.hasMessage() && update.getMessage().hasPhoto()) {
+                        java.io.File picture = getPictureFileFromUpdate(update);
+                        try {
+                            ReadOnlyParcel retrievedParcel = retrieveParcelFromPictureFile(picture);
+                            logger.info("The retrieved parcel is: " + retrievedParcel);
+                            if (retrievedParcel.equals(null)) {
+                                sender.send("Sorry, I didn't seem to understand your image. Please try again.",
+                                        ctx.chatId());
+                            } else if (this.waitingForImage) {
+                                int indexZeroBased = model.getUncompletedParcelList().indexOf(retrievedParcel);
+                                if (indexZeroBased < 0) {
+                                    sender.send("The parcel cannot be found! Please try again.",
+                                            ctx.chatId());
+                                } else {
+                                    performCompleteParcel(sender, logic, indexZeroBased + 1,
+                                            retrievedParcel, ctx.chatId());
+                                }
+                            } else {
+                                sender.send("Here are the details of the parcel: \n"
+                                                + retrievedParcel.toString(), ctx.chatId());
+                            }
+                        } catch (ParseException | CommandException | QRreadException e) {
+                            sender.send(BOT_MESSAGE_FAILURE, ctx.chatId());
+                        } catch (TelegramApiException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                })).build();
+    }
+
+    /**
+     * Abstracted method that performs edits a parcel to completed.
+     */
+    private void performCompleteParcel(MessageSender sender, Logic logic, int indexOfParcel,
+                                       ReadOnlyParcel retrievedParcel, Long chatId)
+                                       throws CommandException, ParseException, TelegramApiException {
+        logic.execute(EditCommand.COMMAND_WORD + " "
+                + indexOfParcel + BOT_SET_COMPLETED);
+        sender.send("Here are the details of the parcel you just completed: \n"
+                    + retrievedParcel.toString(), chatId);
+
+    }
+
+    /**
+     * Method to extract ReadOnlyParcel from picture file using zxing qr code analyser.
+     */
+    private ReadOnlyParcel retrieveParcelFromPictureFile(java.io.File picture) throws ParseException, QRreadException {
+        QRcodeAnalyser qrca = new QRcodeAnalyser(picture);
+        ParcelParser pp = new ParcelParser();
+        logger.info("The decoded text is: " + qrca.getDecodedText());
+        return pp.parse(qrca.getDecodedText());
+    }
+
+    /**
+     * Method to extract picture file from update.
+     */
+    private java.io.File getPictureFileFromUpdate(Update update) {
+        return downloadPhotoByFilePath(getFilePath(getPhoto(update)));
+    }
+```
+###### \java\seedu\address\bot\ArkBot.java
+``` java
+    /**
+     * Returns true if a given string contains all numbers.
+     */
+    public static boolean containsAllNumbers(String test) {
+        String regex = "\\d+";
+        return test.matches(regex);
+    }
+
+    @VisibleForTesting
+    void setSender(MessageSender sender) {
+        this.sender = sender;
+    }
+
+    @VisibleForTesting
+    boolean getWaitingForImageFlag() {
+        return this.waitingForImage;
+    }
+}
+```
+###### \java\seedu\address\bot\parcel\DisplayParcel.java
+``` java
+package seedu.address.bot.parcel;
+
+import seedu.address.model.parcel.Address;
+import seedu.address.model.parcel.Name;
+import seedu.address.model.parcel.Phone;
+
+/**
+ * Formats a parcel to be displayed on telegram.
+ */
+public class DisplayParcel {
+
+    private Name name;
+    private Address address;
+    private Phone phone;
+
+    public DisplayParcel(Name name, Address address, Phone phone) {
+        this.name = name;
+        this.address = address;
+        this.phone = phone;
+    }
+
+    @Override
+    public String toString() {
+        return "Name: " + this.name.toString()
+                + "\nAddress: " + this.address.toString()
+                + "\nPhone: " + this.phone.toString();
+    }
+}
+```
+###### \java\seedu\address\bot\parcel\ParcelParser.java
+``` java
+package seedu.address.bot.parcel;
+
+import static seedu.address.logic.parser.CliSyntax.PREFIX_ADDRESS;
+import static seedu.address.logic.parser.CliSyntax.PREFIX_DELIVERY_DATE;
+import static seedu.address.logic.parser.CliSyntax.PREFIX_EMAIL;
+import static seedu.address.logic.parser.CliSyntax.PREFIX_NAME;
+import static seedu.address.logic.parser.CliSyntax.PREFIX_PHONE;
+import static seedu.address.logic.parser.CliSyntax.PREFIX_STATUS;
+import static seedu.address.logic.parser.CliSyntax.PREFIX_TAG;
+import static seedu.address.logic.parser.CliSyntax.PREFIX_TRACKING_NUMBER;
+
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Stream;
+
+import seedu.address.commons.exceptions.IllegalValueException;
+import seedu.address.logic.parser.ArgumentMultimap;
+import seedu.address.logic.parser.ArgumentTokenizer;
+import seedu.address.logic.parser.ParserUtil;
+import seedu.address.logic.parser.Prefix;
+import seedu.address.logic.parser.exceptions.ParseException;
+import seedu.address.model.parcel.Address;
+import seedu.address.model.parcel.DeliveryDate;
+import seedu.address.model.parcel.Email;
+import seedu.address.model.parcel.Name;
+import seedu.address.model.parcel.Parcel;
+import seedu.address.model.parcel.Phone;
+import seedu.address.model.parcel.ReadOnlyParcel;
+import seedu.address.model.parcel.Status;
+import seedu.address.model.parcel.TrackingNumber;
+import seedu.address.model.tag.Tag;
+
+/**
+ * Parser to parse details of a parcel.
+ */
+public class ParcelParser {
+
+    public static final String PARCEL_PARSER_ERROR = "Invalid parcel format!";
+
+    /**
+     * Parse ia a method to parse a String containing the details of a parcel into a ReadOnlyParcel
+     * @param args represent the details of the parcels with the prefixes.
+     * @return a ReadOnlyParcel that has the details corresponding to the arguments
+     * @throws ParseException if we are unable to understand the parcel information
+     */
+    public ReadOnlyParcel parse(String args) throws ParseException {
+        ArgumentMultimap argMultimap =
+                ArgumentTokenizer.tokenize(" " + args, PREFIX_TRACKING_NUMBER, PREFIX_NAME, PREFIX_PHONE,
+                        PREFIX_EMAIL, PREFIX_ADDRESS, PREFIX_DELIVERY_DATE, PREFIX_STATUS, PREFIX_TAG);
+        if (!arePrefixesPresent(argMultimap, PREFIX_TRACKING_NUMBER, PREFIX_NAME, PREFIX_ADDRESS,
+                PREFIX_DELIVERY_DATE)) {
+            throw new ParseException(PARCEL_PARSER_ERROR);
+        }
+
+        try {
+            TrackingNumber trackingNumber = ParserUtil.parseTrackingNumber(argMultimap
+                    .getValue(PREFIX_TRACKING_NUMBER)).get();
+            Name name = ParserUtil.parseName(argMultimap.getValue(PREFIX_NAME)).get();
+            Address address = ParserUtil.parseAddress(argMultimap.getValue(PREFIX_ADDRESS)).get();
+            DeliveryDate deliveryDate = ParserUtil.parseDeliveryDate(argMultimap.getValue(PREFIX_DELIVERY_DATE)).get();
+            Set<Tag> tagList = ParserUtil.parseTags(argMultimap.getAllValues(PREFIX_TAG));
+            Optional<Email> emailOptional = ParserUtil.parseEmail(argMultimap.getValue(PREFIX_EMAIL));
+            Optional<Status> statusOptional = ParserUtil.parseStatus(argMultimap.getValue(PREFIX_STATUS));
+            Optional<Phone> phoneOptional = ParserUtil.parsePhone(argMultimap.getValue(PREFIX_PHONE));
+
+            Email email;
+            Status status;
+            Phone phone;
+
+            if (emailOptional.isPresent()) {
+                email = emailOptional.get();
+            } else {
+                email = new Email();
+            }
+
+            if (statusOptional.isPresent()) {
+                status = statusOptional.get();
+            } else {
+                status = Status.getInstance("Pending");
+            }
+
+            if (phoneOptional.isPresent()) {
+                phone = phoneOptional.get();
+            } else {
+                phone = new Phone();
+            }
+
+            ReadOnlyParcel parcel = new Parcel(trackingNumber, name, phone, email, address, deliveryDate, status,
+                    tagList);
+
+            return parcel;
+        } catch (IllegalValueException ive) {
+            throw new ParseException(ive.getMessage(), ive);
+        }
+    }
+
+    /**
+     * Returns true if none of the prefixes contains empty {@code Optional} values in the given
+     * {@code ArgumentMultimap}.
+     */
+    private static boolean arePrefixesPresent(ArgumentMultimap argumentMultimap, Prefix... prefixes) {
+        return Stream.of(prefixes).allMatch(prefix -> argumentMultimap.getValue(prefix).isPresent());
+    }
+}
+```
+###### \java\seedu\address\bot\qrcode\exceptions\QRreadException.java
+``` java
+package seedu.address.bot.qrcode.exceptions;
+
+/**
+ * Represents an error which occurs during QRcode analysis.
+ */
+public class QRreadException extends Exception {
+}
+```
+###### \java\seedu\address\bot\qrcode\QRcodeAnalyser.java
+``` java
+package seedu.address.bot.qrcode;
+
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.util.logging.Logger;
+import javax.imageio.ImageIO;
+
+import com.google.zxing.BinaryBitmap;
+import com.google.zxing.LuminanceSource;
+import com.google.zxing.MultiFormatReader;
+import com.google.zxing.NotFoundException;
+import com.google.zxing.Result;
+import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
+import com.google.zxing.common.HybridBinarizer;
+
+import seedu.address.bot.qrcode.exceptions.QRreadException;
+import seedu.address.commons.core.LogsCenter;
+
+/**
+ * QRcodeAnalyser takes in a QR code image and unwraps the information encoded within it.
+ */
+public class QRcodeAnalyser {
+
+    private static final Logger logger = LogsCenter.getLogger(QRcodeAnalyser.class);
+
+    private String decodedText;
+
+    public QRcodeAnalyser(File file) throws QRreadException {
+        try {
+            String decodedText = decodeQRcode(file);
+            if (decodedText == null) {
+                logger.info("No QR Code found in the image");
+            } else {
+                this.decodedText = decodedText;
+                logger.info("Decoded text = " + decodedText);
+            }
+        } catch (QRreadException | IOException e) {
+            logger.info("Could not decode QR Code: " + e.getMessage());
+            throw new QRreadException();
+        }
+    }
+
+    public String getDecodedText() {
+        return this.decodedText;
+    }
+
+    /**
+     * Method to decode the QR code using zxing api.
+     */
+    private static String decodeQRcode(File qrCodeimage) throws IOException, QRreadException {
+        BufferedImage bufferedImage = ImageIO.read(qrCodeimage);
+        LuminanceSource source = new BufferedImageLuminanceSource(bufferedImage);
+        BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+
+        try {
+            Result result = new MultiFormatReader().decode(bitmap);
+            return result.getText();
+        } catch (NotFoundException e) {
+            logger.info("There is no QR code in the image");
+            throw new QRreadException();
+        }
     }
 }
 ```
@@ -73,7 +717,6 @@ public class DeleteTagCommand extends UndoableCommand {
         requireAllNonNull(model, previousAddressBook);
         model.resetData(previousAddressBook);
         model.updateFilteredParcelList(PREDICATE_SHOW_ALL_PARCELS);
-        model.setActiveList(!previousActiveListIsAll);
         if (previousActiveListIsAll) {
             model.uiJumpToTabAll();
         } else {
@@ -97,38 +740,57 @@ public class DeleteTagCommand extends UndoableCommand {
         model.updateFilteredParcelList(PREDICATE_SHOW_ALL_PARCELS);
     }
 ```
-###### \java\seedu\address\logic\parser\DeleteTagCommandParser.java
+###### \java\seedu\address\logic\parser\ParserUtil.java
 ``` java
-package seedu.address.logic.parser;
-
-import static seedu.address.commons.core.Messages.MESSAGE_INVALID_COMMAND_FORMAT;
-
-import seedu.address.commons.exceptions.IllegalValueException;
-import seedu.address.logic.commands.DeleteTagCommand;
-import seedu.address.logic.parser.exceptions.ParseException;
-import seedu.address.model.tag.Tag;
-
-/**
- * Parses input arguments and creates a new DeleteTagCommand object
- */
-public class DeleteTagCommandParser implements Parser<DeleteTagCommand> {
-
     /**
-     * Parses the given {@code String} of arguments in the context of the DeleteCommand
-     * and returns an DeleteCommand object for execution.
-     * @throws ParseException if the user input does not conform the expected format
+     * Parses {@code Optional<String>} into an {@code Optional<DeliveryDate>} and returns it. Leading and trailing
+     * whitespaces will be trimmed.
      */
-    public DeleteTagCommand parse(String args) throws ParseException {
-        try {
-            Tag tag = ParserUtil.parseTag(args);
-            return new DeleteTagCommand(tag);
-        } catch (IllegalValueException ive) {
-            throw new ParseException(
-                    String.format(MESSAGE_INVALID_COMMAND_FORMAT, DeleteTagCommand.MESSAGE_USAGE));
+    public static Optional<DeliveryDate> parseDeliveryDate(Optional<String> deliveryDate) throws IllegalValueException {
+        requireNonNull(deliveryDate);
+        return deliveryDate.isPresent() ? Optional.of(new DeliveryDate(deliveryDate.get())) : Optional.empty();
+    }
+    //@author
+
+```
+###### \java\seedu\address\MainApp.java
+``` java
+        // Instantiate bot here
+        if (!botStarted) {
+
+            ApiContextInitializer.init();
+
+            TelegramBotsApi botsApi = new TelegramBotsApi();
+            try {
+                bot = new ArkBot(logic, model,
+                        config.getBotToken(), config.getBotUsername());
+                logger.info("Bot Authentication Token: " + config.getBotToken());
+                botSession = botsApi.registerBot(bot);
+                botStarted = true;
+            } catch (TelegramApiException e) {
+                logger.warning("Invalid Telegram Bot authentication token. Please check to ensure that "
+                        + "you have keyed in the token correctly and restart the application.");
+            }
         }
+```
+###### \java\seedu\address\MainApp.java
+``` java
+    /**
+     * Method to return instance of logic manager for testing.
+     */
+    @VisibleForTesting
+    public Logic getLogic() {
+        return this.logic;
     }
 
-}
+
+    /**
+     * Method to return instance of bot for testing.
+     */
+    @VisibleForTesting
+    public ArkBot getBot() {
+        return this.bot;
+    }
 ```
 ###### \java\seedu\address\model\AddressBook.java
 ``` java
@@ -142,13 +804,6 @@ public class DeleteTagCommandParser implements Parser<DeleteTagCommand> {
             e.printStackTrace();
         }
     }
-```
-###### \java\seedu\address\model\Model.java
-``` java
-    /**
-     * Deletes the given tag from every parcel.
-     */
-    void deleteTag(Tag target) throws TagNotFoundException, TagInternalErrorException;
 ```
 ###### \java\seedu\address\model\Model.java
 ``` java
@@ -255,42 +910,9 @@ public class ModelListener {
 ```
 ###### \java\seedu\address\model\ModelManager.java
 ``` java
-    /** Deletes the tag from every parcel in the address book */
-    public void deleteTag(Tag target) throws TagNotFoundException, TagInternalErrorException {
-
-        int tagsFound = 0;
-        Iterator it = addressBook.getParcelList().iterator();
-        while (it.hasNext()) {
-            Parcel oldParcel = (Parcel) it.next();
-            Parcel newParcel = new Parcel(oldParcel);
-            Set<Tag> newTags = new HashSet<>(newParcel.getTags());
-            if (newTags.contains(target)) {
-                newTags.remove(target);
-                tagsFound++;
-            }
-
-            newParcel.setTags(newTags);
-
-            try {
-                addressBook.updateParcel(oldParcel, newParcel);
-            } catch (DuplicateParcelException | ParcelNotFoundException dpe) {
-                throw new TagInternalErrorException();
-            }
-        }
-
-        if (tagsFound == 0) {
-            throw new TagNotFoundException();
-        }
-
-        indicateAddressBookChanged();
-    }
-```
-###### \java\seedu\address\model\ModelManager.java
-``` java
     @Override
     public void maintainSorted() {
         addressBook.sort();
-        indicateAddressBookChanged();
     }
 
     @Override
@@ -341,17 +963,14 @@ public class ModelListener {
      * Method to internally change the active list to the correct tab according to the changed parcel.
      * @param targetParcel
      */
-
     private void handleTabChange(ReadOnlyParcel targetParcel) {
         try {
             if (targetParcel.getStatus().equals(Status.getInstance("COMPLETED"))) {
                 if (this.getTabIndex().equals(TAB_ALL_PARCELS)) {
-                    this.setActiveList(true);
                     uiJumpToTabCompleted();
                 }
             } else {
                 if (this.getTabIndex().equals(TAB_COMPLETED_PARCELS)) {
-                    this.setActiveList(false);
                     uiJumpToTabAll();
                 }
             }

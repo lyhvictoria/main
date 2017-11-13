@@ -1,4 +1,609 @@
 # fustilio
+###### \java\seedu\address\bot\ArkBotTest.java
+``` java
+package seedu.address.bot;
+
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static seedu.address.bot.ArkBot.BOT_MESSAGE_CANCEL_COMMAND;
+import static seedu.address.bot.ArkBot.BOT_MESSAGE_COMPLETE_COMMAND;
+import static seedu.address.bot.ArkBot.BOT_MESSAGE_FAILURE;
+import static seedu.address.bot.ArkBot.BOT_MESSAGE_START;
+import static seedu.address.bot.ArkBot.BOT_MESSAGE_SUCCESS;
+import static seedu.address.commons.core.Messages.MESSAGE_INVALID_COMMAND_FORMAT;
+import static seedu.address.testutil.TypicalParcels.BENSON;
+import static seedu.address.testutil.TypicalParcels.DANIEL;
+import static seedu.address.testutil.TypicalParcels.HOON;
+
+import java.util.concurrent.Semaphore;
+import java.util.logging.Logger;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.mockito.Mockito;
+import org.telegram.abilitybots.api.db.DBContext;
+import org.telegram.abilitybots.api.db.MapDBContext;
+import org.telegram.abilitybots.api.objects.EndUser;
+import org.telegram.abilitybots.api.objects.MessageContext;
+import org.telegram.abilitybots.api.sender.MessageSender;
+import org.telegram.telegrambots.api.objects.Update;
+
+import javafx.application.Platform;
+import javafx.collections.ObservableList;
+import seedu.address.TestApp;
+import seedu.address.bot.parcel.ParcelParser;
+import seedu.address.commons.core.LogsCenter;
+import seedu.address.logic.commands.AddCommand;
+import seedu.address.logic.commands.FindCommand;
+import seedu.address.logic.commands.RedoCommand;
+import seedu.address.logic.commands.UndoCommand;
+import seedu.address.logic.parser.exceptions.ParseException;
+import seedu.address.model.Model;
+import seedu.address.model.parcel.ReadOnlyParcel;
+import seedu.address.model.parcel.exceptions.DuplicateParcelException;
+import seedu.address.model.parcel.exceptions.ParcelNotFoundException;
+import seedu.address.testutil.ParcelBuilder;
+import systemtests.ModelHelper;
+import systemtests.SystemTestSetupHelper;
+
+public class ArkBotTest {
+    public static final long CHAT_ID = 1337L;
+    public static final int USER_ID = 1337;
+
+    private static final String BOT_DEMO_JOHN = "#/RR000000000SG n/John Doe p/98765432 e/johnd@example.com "
+            + "a/John street, block 123, #01-01 S123121 d/01-01-2001 s/DELIVERING";
+    private static final String SAMPLE_ADD_COMMAND = BOT_DEMO_JOHN;
+    private static final Logger logger = LogsCenter.getLogger(ArkBotTest.class);
+
+    private ArkBot bot;
+    private DBContext db;
+    private MessageSender sender;
+    private EndUser endUser;
+    private Model model;
+    private ParcelParser parcelParser;
+    private int numberOfFailures = 0;
+
+    @BeforeClass
+    public static void setupBeforeClass() {
+        SystemTestSetupHelper.initializeStage();
+    }
+
+    @Before
+    public void setUp() {
+        // Offline instance will get deleted at JVM shutdown
+        db = MapDBContext.offlineInstance("test");
+        SystemTestSetupHelper setupHelper = new SystemTestSetupHelper();
+        TestApp testApp = setupHelper.setupApplication();
+        model = testApp.getModel();
+        bot = testApp.getBot();
+        sender = mock(MessageSender.class);
+        endUser = EndUser.endUser(USER_ID, "Abbas", "Abou Daya", "addo37");
+        bot.setSender(sender);
+        parcelParser = new ParcelParser();
+    }
+
+    @Test
+    public void arkBotAllTests() throws InterruptedException, ParseException, DuplicateParcelException,
+            ParcelNotFoundException {
+        Update mockedUpdate = mock(Update.class);
+        MessageContext context = MessageContext.newContext(mockedUpdate, endUser, CHAT_ID);
+
+        bot.startCommand().action().accept(context);
+
+        // We verify that the sender was called only ONCE and sent start up message
+        Mockito.verify(sender, times(1)).send(BOT_MESSAGE_START, CHAT_ID);
+
+        /*================================== UNDO COMMAND FAILURE TEST ====================================*/
+
+        mockedUpdate = mock(Update.class);
+        context = MessageContext.newContext(mockedUpdate, endUser, CHAT_ID);
+
+        bot.undoCommand().action().accept(context);
+        String message = BOT_MESSAGE_FAILURE;
+        waitForRunLater();
+
+        // We verify that the sender sent failed message numberOfFailures times.
+        Mockito.verify(sender, times(++numberOfFailures)).send(message, CHAT_ID);
+
+        /*================================== REDO COMMAND FAILURE TEST ====================================*/
+
+        mockedUpdate = mock(Update.class);
+        context = MessageContext.newContext(mockedUpdate, endUser, CHAT_ID);
+
+        bot.redoCommand().action().accept(context);
+        message = BOT_MESSAGE_FAILURE;
+        waitForRunLater();
+
+        // We verify that the sender sent failed message numberOfFailures times.
+        Mockito.verify(sender, times(++numberOfFailures)).send(message, CHAT_ID);
+
+        /*================================== ADD COMMAND SUCCESS TEST ====================================*/
+
+        mockedUpdate = mock(Update.class);
+        context = MessageContext.newContext(mockedUpdate, endUser, CHAT_ID, SAMPLE_ADD_COMMAND);
+
+        bot.addCommand().action().accept(context);
+        message = String.format(BOT_MESSAGE_SUCCESS, AddCommand.COMMAND_WORD);
+        model.addParcelCommand(parcelParser.parse(BOT_DEMO_JOHN));
+        waitForRunLater();
+
+        // We verify that the sender was called only ONCE and sent add command success.
+        Mockito.verify(sender, times(1)).send(message, CHAT_ID);
+
+        /*================================== ADD COMMAND FAILURE TEST ====================================*/
+
+        mockedUpdate = mock(Update.class);
+        context = MessageContext.newContext(mockedUpdate, endUser, CHAT_ID, SAMPLE_ADD_COMMAND);
+
+        bot.addCommand().action().accept(context);
+        message = String.format(MESSAGE_INVALID_COMMAND_FORMAT, AddCommand.MESSAGE_USAGE);
+        waitForRunLater();
+
+        // We verify that the sender was called only ONCE and sent add command failure.
+        Mockito.verify(sender, times(1)).send(message, CHAT_ID);
+
+        /*================================== LIST COMMAND SUCCESS TEST ====================================*/
+
+        mockedUpdate = mock(Update.class);
+        context = MessageContext.newContext(mockedUpdate, endUser, CHAT_ID);
+
+        bot.listCommand().action().accept(context);
+        ObservableList<ReadOnlyParcel> parcels = model.getUncompletedParcelList();
+        message = bot.parseDisplayParcels(bot.formatParcelsForBot(parcels));
+        logger.info("Listing parcels: \n" + message);
+        waitForRunLater();
+
+        // We verify that the sender was called only ONCE and listed parcels
+        Mockito.verify(sender, times(1)).send(message, CHAT_ID);
+
+        /*================================== DELETE COMMAND SUCCESS TEST ====================================*/
+
+        mockedUpdate = mock(Update.class);
+        context = MessageContext.newContext(mockedUpdate, endUser, CHAT_ID, "1");
+
+        bot.deleteCommand().action().accept(context);
+        message = bot.parseDisplayParcels(bot.formatParcelsForBot(parcels));
+        waitForRunLater();
+
+        // We verify that the sender was called only ONCE and sent delete command success.
+        Mockito.verify(sender, times(1)).send(message, CHAT_ID);
+
+        /*================================== UNDO COMMAND SUCCESS TEST ====================================*/
+
+        mockedUpdate = mock(Update.class);
+        context = MessageContext.newContext(mockedUpdate, endUser, CHAT_ID);
+
+        bot.undoCommand().action().accept(context);
+        message = String.format(BOT_MESSAGE_SUCCESS, UndoCommand.COMMAND_WORD);
+        waitForRunLater();
+
+        // We verify that the sender was called only ONCE and sent undo command success.
+        Mockito.verify(sender, times(1)).send(message, CHAT_ID);
+
+        /*================================== REDO COMMAND SUCCESS TEST ====================================*/
+
+        mockedUpdate = mock(Update.class);
+        context = MessageContext.newContext(mockedUpdate, endUser, CHAT_ID);
+
+        bot.redoCommand().action().accept(context);
+        message = String.format(BOT_MESSAGE_SUCCESS, RedoCommand.COMMAND_WORD);
+        waitForRunLater();
+
+        // We verify that the sender was called only ONCE and sent redo command success.
+        Mockito.verify(sender, times(1)).send(message, CHAT_ID);
+
+        /*================================== DELETE COMMAND FAILURE TEST ====================================*/
+
+        mockedUpdate = mock(Update.class);
+        context = MessageContext.newContext(mockedUpdate, endUser, CHAT_ID, (model.getUncompletedParcelList().size()
+                + 1) + "");
+
+        bot.deleteCommand().action().accept(context);
+        waitForRunLater();
+
+        // We verify that the sender sent failed message numberOfFailures times.
+        Mockito.verify(sender, times(++numberOfFailures)).send(BOT_MESSAGE_FAILURE, CHAT_ID);
+
+        /*================================== FIND COMMAND SUCCESS TEST ====================================*/
+
+        mockedUpdate = mock(Update.class);
+        context = MessageContext.newContext(mockedUpdate, endUser, CHAT_ID, "Meier");
+        ModelHelper.setFilteredList(model, BENSON, DANIEL, HOON);
+        parcels = model.getUncompletedParcelList();
+        message = bot.parseDisplayParcels(bot.formatParcelsForBot(parcels));
+        bot.findCommand().action().accept(context);
+        waitForRunLater();
+
+        // We verify that the sender was called only ONCE and sent find command success.
+        Mockito.verify(sender, times(1)).send(message, CHAT_ID);
+
+        /*================================== FIND COMMAND FAILURE TEST ====================================*/
+
+        mockedUpdate = mock(Update.class);
+        context = MessageContext.newContext(mockedUpdate, endUser, CHAT_ID);
+        message = String.format(MESSAGE_INVALID_COMMAND_FORMAT, FindCommand.MESSAGE_USAGE);
+        bot.findCommand().action().accept(context);
+        waitForRunLater();
+
+        // We verify that the sender was called only ONCE and sent find command failure.
+        Mockito.verify(sender, times(1)).send(message, CHAT_ID);
+
+        /*======================== COMPLETE COMMAND SUCCESS TEST (VALID INPUT) ===========================*/
+
+        mockedUpdate = mock(Update.class);
+        parcels = model.getUncompletedParcelList();
+        context = MessageContext.newContext(mockedUpdate, endUser, CHAT_ID, parcels.size() + "");
+        message = bot.parseDisplayParcels(bot.formatParcelsForBot(parcels));
+        bot.completeCommand().action().accept(context);
+        ReadOnlyParcel oldParcel = parcels.get(parcels.size() - 1);
+        ReadOnlyParcel editedParcel = new ParcelBuilder(oldParcel).withStatus("Completed").build();
+        model.updateParcel(oldParcel, editedParcel);
+        waitForRunLater();
+
+        // We verify that the sender was called only ONCE and sent message command success.
+        Mockito.verify(sender, times(1)).send(message, CHAT_ID);
+
+        /*============================== COMPLETE COMMAND FAILURE TEST (INVALID INPUT) ==============================*/
+
+        mockedUpdate = mock(Update.class);
+        context = MessageContext.newContext(mockedUpdate, endUser, CHAT_ID, "@#$");
+        message = BOT_MESSAGE_FAILURE;
+        bot.completeCommand().action().accept(context);
+        waitForRunLater();
+
+        // We verify that the sender was called only ONCE and sent message command failure.
+        Mockito.verify(sender, times(++numberOfFailures)).send(message, CHAT_ID);
+
+        /*=============================== COMPLETE COMMAND SUCCESS TEST (NO INPUT) ==================================*/
+
+        mockedUpdate = mock(Update.class);
+        context = MessageContext.newContext(mockedUpdate, endUser, CHAT_ID);
+        message = BOT_MESSAGE_COMPLETE_COMMAND;
+        bot.completeCommand().action().accept(context);
+        waitForRunLater();
+
+        assertEquals(bot.getWaitingForImageFlag(), true);
+        // We verify that the sender was called only ONCE and sent complete command success and QR code prompt.
+        Mockito.verify(sender, times(1)).send(message, CHAT_ID);
+
+        /*=============================== CANCEL COMMAND SUCCESS TEST (NO INPUT) ==================================*/
+
+        mockedUpdate = mock(Update.class);
+        context = MessageContext.newContext(mockedUpdate, endUser, CHAT_ID);
+        message = BOT_MESSAGE_CANCEL_COMMAND;
+        bot.cancelCommand().action().accept(context);
+        waitForRunLater();
+
+        assertEquals(bot.getWaitingForImageFlag(), false);
+        // We verify that the sender was called only ONCE and sent complete command success and QR code prompt.
+        Mockito.verify(sender, times(1)).send(message, CHAT_ID);
+
+    }
+
+    /**
+     * Using semaphores to wait for task on current thread to cease before carrying on.
+     */
+    public static void waitForRunLater() throws InterruptedException {
+        Semaphore semaphore = new Semaphore(0);
+        Platform.runLater(() -> semaphore.release());
+        semaphore.acquire();
+
+    }
+
+    @After
+    public void tearDown() {
+        db.clear();
+    }
+}
+```
+###### \java\seedu\address\bot\parcel\ParcelParserTest.java
+``` java
+package seedu.address.bot.parcel;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+import static seedu.address.logic.commands.CommandTestUtil.ADDRESS_DESC_AMY;
+import static seedu.address.logic.commands.CommandTestUtil.ADDRESS_DESC_BOB;
+import static seedu.address.logic.commands.CommandTestUtil.DELIVERY_DATE_DESC_AMY;
+import static seedu.address.logic.commands.CommandTestUtil.DELIVERY_DATE_DESC_BOB;
+import static seedu.address.logic.commands.CommandTestUtil.EMAIL_DESC_AMY;
+import static seedu.address.logic.commands.CommandTestUtil.EMAIL_DESC_BOB;
+import static seedu.address.logic.commands.CommandTestUtil.INVALID_ADDRESS_DESC;
+import static seedu.address.logic.commands.CommandTestUtil.INVALID_DELIVERY_DATE_DESC;
+import static seedu.address.logic.commands.CommandTestUtil.INVALID_EMAIL_DESC;
+import static seedu.address.logic.commands.CommandTestUtil.INVALID_NAME_DESC;
+import static seedu.address.logic.commands.CommandTestUtil.INVALID_PHONE_DESC;
+import static seedu.address.logic.commands.CommandTestUtil.INVALID_STATUS_DESC;
+import static seedu.address.logic.commands.CommandTestUtil.INVALID_TAG_DESC;
+import static seedu.address.logic.commands.CommandTestUtil.INVALID_TRACKING_NUMBER_DESC;
+import static seedu.address.logic.commands.CommandTestUtil.NAME_DESC_AMY;
+import static seedu.address.logic.commands.CommandTestUtil.NAME_DESC_BOB;
+import static seedu.address.logic.commands.CommandTestUtil.PHONE_DESC_AMY;
+import static seedu.address.logic.commands.CommandTestUtil.PHONE_DESC_BOB;
+import static seedu.address.logic.commands.CommandTestUtil.STATUS_DESC_COMPLETED;
+import static seedu.address.logic.commands.CommandTestUtil.STATUS_DESC_DELIVERING;
+import static seedu.address.logic.commands.CommandTestUtil.TAG_DESC_FLAMMABLE;
+import static seedu.address.logic.commands.CommandTestUtil.TAG_DESC_FROZEN;
+import static seedu.address.logic.commands.CommandTestUtil.TRACKING_NUMBER_DESC_AMY;
+import static seedu.address.logic.commands.CommandTestUtil.TRACKING_NUMBER_DESC_BOB;
+import static seedu.address.logic.commands.CommandTestUtil.VALID_ADDRESS_AMY;
+import static seedu.address.logic.commands.CommandTestUtil.VALID_ADDRESS_BOB;
+import static seedu.address.logic.commands.CommandTestUtil.VALID_DELIVERY_DATE_AMY;
+import static seedu.address.logic.commands.CommandTestUtil.VALID_DELIVERY_DATE_BOB;
+import static seedu.address.logic.commands.CommandTestUtil.VALID_EMAIL_AMY;
+import static seedu.address.logic.commands.CommandTestUtil.VALID_EMAIL_BOB;
+import static seedu.address.logic.commands.CommandTestUtil.VALID_NAME_AMY;
+import static seedu.address.logic.commands.CommandTestUtil.VALID_NAME_BOB;
+import static seedu.address.logic.commands.CommandTestUtil.VALID_PHONE_AMY;
+import static seedu.address.logic.commands.CommandTestUtil.VALID_PHONE_BOB;
+import static seedu.address.logic.commands.CommandTestUtil.VALID_STATUS_COMPLETED;
+import static seedu.address.logic.commands.CommandTestUtil.VALID_TAG_FLAMMABLE;
+import static seedu.address.logic.commands.CommandTestUtil.VALID_TAG_FROZEN;
+import static seedu.address.logic.commands.CommandTestUtil.VALID_TRACKING_NUMBER_AMY;
+import static seedu.address.logic.commands.CommandTestUtil.VALID_TRACKING_NUMBER_BOB;
+
+import org.junit.Test;
+
+import seedu.address.logic.parser.exceptions.ParseException;
+import seedu.address.model.parcel.Address;
+import seedu.address.model.parcel.DeliveryDate;
+import seedu.address.model.parcel.Email;
+import seedu.address.model.parcel.Name;
+import seedu.address.model.parcel.Parcel;
+import seedu.address.model.parcel.Phone;
+import seedu.address.model.parcel.ReadOnlyParcel;
+import seedu.address.model.parcel.Status;
+import seedu.address.model.parcel.TrackingNumber;
+import seedu.address.model.tag.Tag;
+import seedu.address.testutil.ParcelBuilder;
+
+public class ParcelParserTest {
+    private ParcelParser parser = new ParcelParser();
+
+    @Test
+    public void parse_allFieldsPresent_success() {
+        Parcel expectedParcel = new ParcelBuilder().withTrackingNumber(VALID_TRACKING_NUMBER_BOB)
+                .withName(VALID_NAME_BOB).withPhone(VALID_PHONE_BOB).withEmail(VALID_EMAIL_BOB)
+                .withAddress(VALID_ADDRESS_BOB).withDeliveryDate(VALID_DELIVERY_DATE_BOB)
+                .withStatus(VALID_STATUS_COMPLETED).withTags(VALID_TAG_FLAMMABLE).build();
+
+        // multiple tracking number - last tracking number accepted
+        assertParseSuccess(parser, " " + TRACKING_NUMBER_DESC_AMY
+                + TRACKING_NUMBER_DESC_BOB + NAME_DESC_AMY + NAME_DESC_BOB + PHONE_DESC_BOB + EMAIL_DESC_BOB
+                + ADDRESS_DESC_BOB + DELIVERY_DATE_DESC_BOB + STATUS_DESC_COMPLETED + TAG_DESC_FLAMMABLE,
+                expectedParcel);
+
+        // multiple names - last name accepted
+        assertParseSuccess(parser, " " + TRACKING_NUMBER_DESC_BOB + NAME_DESC_AMY
+                + NAME_DESC_BOB + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB + DELIVERY_DATE_DESC_BOB
+                + STATUS_DESC_COMPLETED + TAG_DESC_FLAMMABLE,
+                expectedParcel);
+
+        // multiple phones - last phone accepted
+        assertParseSuccess(parser, " " + TRACKING_NUMBER_DESC_BOB + NAME_DESC_BOB
+                + PHONE_DESC_AMY + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB + STATUS_DESC_COMPLETED
+                + DELIVERY_DATE_DESC_BOB + TAG_DESC_FLAMMABLE,
+                expectedParcel);
+
+        // multiple emails - last email accepted
+        assertParseSuccess(parser, " " + TRACKING_NUMBER_DESC_BOB + NAME_DESC_BOB
+                + PHONE_DESC_BOB + EMAIL_DESC_AMY + EMAIL_DESC_BOB + ADDRESS_DESC_BOB + DELIVERY_DATE_DESC_BOB
+                + STATUS_DESC_COMPLETED + TAG_DESC_FLAMMABLE,
+                expectedParcel);
+
+        // multiple addresses - last address accepted
+        assertParseSuccess(parser, " " + TRACKING_NUMBER_DESC_BOB + NAME_DESC_BOB
+                + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_AMY + ADDRESS_DESC_BOB + DELIVERY_DATE_DESC_BOB
+                + STATUS_DESC_COMPLETED + TAG_DESC_FLAMMABLE,
+                expectedParcel);
+
+        // multiple delivery dates - last delivery date accepted
+        assertParseSuccess(parser, " " + TRACKING_NUMBER_DESC_BOB + NAME_DESC_BOB
+               + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB + DELIVERY_DATE_DESC_AMY
+               + DELIVERY_DATE_DESC_BOB + STATUS_DESC_COMPLETED + TAG_DESC_FLAMMABLE,
+               expectedParcel);
+
+        // multiple status - last status accepted
+        assertParseSuccess(parser, " " + TRACKING_NUMBER_DESC_BOB + NAME_DESC_BOB
+               + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB + DELIVERY_DATE_DESC_BOB
+               + STATUS_DESC_DELIVERING + STATUS_DESC_COMPLETED + TAG_DESC_FLAMMABLE,
+               expectedParcel);
+
+        // multiple tags - all accepted
+        Parcel expectedParcelMultipleTags = new ParcelBuilder().withTrackingNumber(VALID_TRACKING_NUMBER_BOB)
+                .withName(VALID_NAME_BOB).withPhone(VALID_PHONE_BOB).withEmail(VALID_EMAIL_BOB)
+                .withAddress(VALID_ADDRESS_BOB).withDeliveryDate(VALID_DELIVERY_DATE_BOB)
+                .withTags(VALID_TAG_FLAMMABLE, VALID_TAG_FROZEN).build();
+        assertParseSuccess(parser, " " + TRACKING_NUMBER_DESC_BOB + NAME_DESC_BOB
+                + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB + DELIVERY_DATE_DESC_BOB + TAG_DESC_FROZEN
+                + TAG_DESC_FLAMMABLE,
+                expectedParcelMultipleTags);
+    }
+
+    @Test
+    public void parse_optionalFieldsMissing_success() {
+        // zero tags and no status
+        Parcel expectedParcel = new ParcelBuilder().withTrackingNumber(VALID_TRACKING_NUMBER_AMY)
+                .withName(VALID_NAME_AMY).withPhone(VALID_PHONE_AMY).withEmail(VALID_EMAIL_AMY)
+                .withAddress(VALID_ADDRESS_AMY).withDeliveryDate(VALID_DELIVERY_DATE_AMY).withStatus("PENDING")
+                .withTags().build();
+        assertParseSuccess(parser, " " + TRACKING_NUMBER_DESC_AMY + NAME_DESC_AMY
+                + PHONE_DESC_AMY + EMAIL_DESC_AMY + ADDRESS_DESC_AMY + DELIVERY_DATE_DESC_AMY,
+                expectedParcel);
+
+        // no phone number
+        Parcel expectedParcelDefaultPhone = new ParcelBuilder().withTrackingNumber(VALID_TRACKING_NUMBER_BOB)
+                .withName(VALID_NAME_BOB).withPhone(Phone.PHONE_DEFAULT_VALUE).withEmail(VALID_EMAIL_BOB)
+                .withAddress(VALID_ADDRESS_BOB).withDeliveryDate(VALID_DELIVERY_DATE_BOB)
+                .withStatus(VALID_STATUS_COMPLETED).withTags(VALID_TAG_FLAMMABLE).build();
+        assertParseSuccess(parser, " " + TRACKING_NUMBER_DESC_BOB + NAME_DESC_BOB
+                + EMAIL_DESC_BOB + ADDRESS_DESC_BOB + DELIVERY_DATE_DESC_BOB
+                + STATUS_DESC_COMPLETED + TAG_DESC_FLAMMABLE,
+                expectedParcelDefaultPhone);
+
+        // no email
+        Parcel expectedParcelDefaultEmail = new ParcelBuilder().withTrackingNumber(VALID_TRACKING_NUMBER_BOB)
+                .withName(VALID_NAME_BOB).withPhone(VALID_PHONE_BOB).withEmail(Email.EMAIL_DEFAULT_VALUE)
+                .withAddress(VALID_ADDRESS_BOB).withDeliveryDate(VALID_DELIVERY_DATE_BOB)
+                .withStatus(VALID_STATUS_COMPLETED).withTags(VALID_TAG_FLAMMABLE).build();
+        assertParseSuccess(parser, " " + TRACKING_NUMBER_DESC_BOB + NAME_DESC_BOB
+                + PHONE_DESC_BOB + ADDRESS_DESC_BOB + DELIVERY_DATE_DESC_BOB
+                + STATUS_DESC_COMPLETED + TAG_DESC_FLAMMABLE,
+                expectedParcelDefaultEmail);
+
+
+    }
+
+    @Test
+    public void parse_compulsoryFieldMissing_failure() {
+        String expectedMessage = ParcelParser.PARCEL_PARSER_ERROR;
+
+        // missing tracking number prefix
+        assertParseFailure(parser, " " + VALID_TRACKING_NUMBER_BOB + NAME_DESC_BOB
+                + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB + DELIVERY_DATE_DESC_BOB, expectedMessage);
+
+        // missing name prefix
+        assertParseFailure(parser, " " + TRACKING_NUMBER_DESC_BOB + VALID_NAME_BOB
+                + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB + DELIVERY_DATE_DESC_BOB, expectedMessage);
+
+        // missing address prefix
+        assertParseFailure(parser, " " + TRACKING_NUMBER_DESC_BOB + NAME_DESC_BOB
+                + PHONE_DESC_BOB + EMAIL_DESC_BOB + VALID_ADDRESS_BOB + DELIVERY_DATE_DESC_BOB, expectedMessage);
+
+        // missing delivery date prefix
+        assertParseFailure(parser, " " + TRACKING_NUMBER_DESC_BOB + NAME_DESC_BOB
+                + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB + VALID_DELIVERY_DATE_BOB, expectedMessage);
+
+        // all prefixes missing
+        assertParseFailure(parser, " " + TRACKING_NUMBER_DESC_BOB + VALID_NAME_BOB
+                + VALID_PHONE_BOB + VALID_EMAIL_BOB + VALID_ADDRESS_BOB + VALID_DELIVERY_DATE_BOB, expectedMessage);
+    }
+
+    @Test
+    public void parse_invalidValue_failure() {
+        // invalid tracking number
+        assertParseFailure(parser, " " + INVALID_TRACKING_NUMBER_DESC + INVALID_NAME_DESC
+                + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB + DELIVERY_DATE_DESC_BOB + STATUS_DESC_COMPLETED
+                + TAG_DESC_FROZEN + TAG_DESC_FLAMMABLE, TrackingNumber.MESSAGE_TRACKING_NUMBER_CONSTRAINTS);
+
+        // invalid name
+        assertParseFailure(parser, " " + TRACKING_NUMBER_DESC_BOB + INVALID_NAME_DESC
+                + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB + DELIVERY_DATE_DESC_BOB + STATUS_DESC_COMPLETED
+                + TAG_DESC_FROZEN + TAG_DESC_FLAMMABLE, Name.MESSAGE_NAME_CONSTRAINTS);
+
+        // invalid phone
+        assertParseFailure(parser, " " + TRACKING_NUMBER_DESC_BOB + NAME_DESC_BOB
+                + INVALID_PHONE_DESC + EMAIL_DESC_BOB + ADDRESS_DESC_BOB + DELIVERY_DATE_DESC_BOB
+                + STATUS_DESC_COMPLETED + TAG_DESC_FROZEN + TAG_DESC_FLAMMABLE, Phone.MESSAGE_PHONE_CONSTRAINTS);
+
+        // invalid email
+        assertParseFailure(parser, " " + TRACKING_NUMBER_DESC_BOB + NAME_DESC_BOB
+                + PHONE_DESC_BOB + INVALID_EMAIL_DESC + ADDRESS_DESC_BOB + DELIVERY_DATE_DESC_BOB
+                + TAG_DESC_FROZEN + TAG_DESC_FLAMMABLE, Email.MESSAGE_EMAIL_CONSTRAINTS);
+
+        // invalid address
+        assertParseFailure(parser, " " + TRACKING_NUMBER_DESC_BOB + NAME_DESC_BOB
+                + PHONE_DESC_BOB + EMAIL_DESC_BOB + INVALID_ADDRESS_DESC + DELIVERY_DATE_DESC_BOB
+                + STATUS_DESC_COMPLETED + TAG_DESC_FROZEN + TAG_DESC_FLAMMABLE, Address.MESSAGE_ADDRESS_CONSTRAINTS);
+
+        // invalid delivery date
+        assertParseFailure(parser, " " + TRACKING_NUMBER_DESC_BOB + NAME_DESC_BOB
+                + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB + INVALID_DELIVERY_DATE_DESC
+                + STATUS_DESC_COMPLETED + TAG_DESC_FROZEN + TAG_DESC_FLAMMABLE,
+                DeliveryDate.MESSAGE_DELIVERY_DATE_CONSTRAINTS);
+
+        // invalid status
+        assertParseFailure(parser, " " + TRACKING_NUMBER_DESC_BOB + NAME_DESC_BOB
+                + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB + DELIVERY_DATE_DESC_BOB + INVALID_STATUS_DESC
+                + TAG_DESC_FROZEN + TAG_DESC_FLAMMABLE, Status.MESSAGE_STATUS_CONSTRAINTS);
+
+        // invalid tag
+        assertParseFailure(parser, " " + TRACKING_NUMBER_DESC_BOB + NAME_DESC_BOB
+                + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB + DELIVERY_DATE_DESC_BOB
+                + INVALID_TAG_DESC + VALID_TAG_FLAMMABLE, Tag.MESSAGE_TAG_CONSTRAINTS);
+
+        // two invalid values, only first invalid value reported
+        assertParseFailure(parser, " " + TRACKING_NUMBER_DESC_BOB + INVALID_NAME_DESC
+                + PHONE_DESC_BOB + EMAIL_DESC_BOB + INVALID_ADDRESS_DESC + INVALID_DELIVERY_DATE_DESC,
+                Name.MESSAGE_NAME_CONSTRAINTS);
+    }
+
+    /**
+     * Asserts that the parsing of {@code userInput} by {@code parser} is successful and the command created
+     * equals to {@code expectedCommand}.
+     */
+    public static void assertParseSuccess(ParcelParser parser, String userInput, ReadOnlyParcel expectedParcel) {
+        try {
+            ReadOnlyParcel parsedParcel = parser.parse(userInput);
+            assertEquals(parsedParcel, expectedParcel);
+        } catch (ParseException pe) {
+            throw new IllegalArgumentException("Invalid userInput.", pe);
+        }
+    }
+
+    /**
+     * Asserts that the parsing of {@code userInput} by {@code parser} is unsuccessful and the error message
+     * equals to {@code expectedMessage}.
+     */
+    public static void assertParseFailure(ParcelParser parser, String userInput, String expectedMessage) {
+        try {
+            parser.parse(userInput);
+            fail("The expected ParseException was not thrown.");
+        } catch (ParseException pe) {
+            assertEquals(expectedMessage, pe.getMessage());
+        }
+    }
+}
+```
+###### \java\seedu\address\bot\qrcode\QRcodeAnalyserTest.java
+``` java
+package seedu.address.bot.qrcode;
+
+import static org.junit.Assert.assertEquals;
+
+import java.io.File;
+
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
+
+import seedu.address.bot.qrcode.exceptions.QRreadException;
+
+
+/**
+ * QRcodeAnalyser takes in a QR code image and unwraps the information encoded within it.
+ */
+public class QRcodeAnalyserTest {
+
+    private static final String UNREADABLE_FILE_PATH = "./src/test/data/qrcode/BETSY_CROWE_UNREADABLE.jpg";
+    private static final String READABLE_FILE_PATH = "./src/test/data/qrcode/BETSY_CROWE_READABLE.jpg";
+    private static final String BETSY_DESIRED_DATA = "#/RR000000000SG n/Betsy Crowe t/frozen d/02-02-2002 "
+            + "e/betsycrowe@example.com a/22 Crowe road S123123 p/1234567 t/fragile";
+
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
+
+    private QRcodeAnalyser qrCodeAnalyser;
+
+    @Test
+    public void acceptsReadableAndClear() throws QRreadException {
+        File readable = new File(READABLE_FILE_PATH);
+        qrCodeAnalyser = new QRcodeAnalyser(readable);
+        assertEquals(BETSY_DESIRED_DATA, qrCodeAnalyser.getDecodedText());
+    }
+
+    @Test
+    public void rejectsUnreadable() throws QRreadException {
+        thrown.expect(QRreadException.class);
+        File unreadable = new File(UNREADABLE_FILE_PATH);
+        qrCodeAnalyser = new QRcodeAnalyser(unreadable);
+    }
+
+}
+```
 ###### \java\seedu\address\logic\commands\AddCommandTest.java
 ``` java
     /**
@@ -43,151 +648,6 @@
             return new AddressBook();
         }
     }
-```
-###### \java\seedu\address\logic\commands\DeleteTagCommandTest.java
-``` java
-package seedu.address.logic.commands;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static seedu.address.logic.commands.CommandTestUtil.VALID_TAG_FLAMMABLE;
-import static seedu.address.logic.commands.CommandTestUtil.VALID_TAG_FRAGILE;
-import static seedu.address.logic.commands.CommandTestUtil.assertCommandFailure;
-import static seedu.address.logic.commands.CommandTestUtil.assertCommandSuccess;
-import static seedu.address.testutil.TypicalParcels.getTypicalAddressBook;
-
-import java.util.Iterator;
-
-import org.junit.Before;
-import org.junit.Test;
-
-import javafx.collections.ObservableList;
-import seedu.address.commons.exceptions.IllegalValueException;
-import seedu.address.logic.CommandHistory;
-import seedu.address.logic.UndoRedoStack;
-import seedu.address.model.Model;
-import seedu.address.model.ModelManager;
-import seedu.address.model.UserPrefs;
-import seedu.address.model.parcel.ReadOnlyParcel;
-import seedu.address.model.tag.Tag;
-import seedu.address.model.tag.exceptions.TagNotFoundException;
-
-
-/**
- * Contains integration tests (interaction with the Model) and unit tests for ListCommand.
- */
-public class DeleteTagCommandTest {
-
-    private Model model;
-    private Model expectedModel;
-    private DeleteTagCommand deleteTagCommand;
-    private Tag tagToDelete;
-
-    @Before
-    public void setUp() {
-        model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
-        expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
-
-        ObservableList<ReadOnlyParcel> parcelsToManipulate = model.getFilteredParcelList();
-
-        Iterator it = parcelsToManipulate.iterator();
-        Boolean noCandidate = true;
-
-        while (it.hasNext() && noCandidate) {
-            ReadOnlyParcel parcelToManipulate = (ReadOnlyParcel) it.next();
-            if (!parcelToManipulate.getTags().isEmpty()) {
-                tagToDelete = (Tag) parcelToManipulate.getTags().toArray()[0];
-                noCandidate = false;
-            }
-        }
-    }
-
-    @Test
-    public void execute_deleteTag_success() throws Exception {
-
-        deleteTagCommand = prepareCommand(tagToDelete);
-
-        String expectedMessage = String.format(DeleteTagCommand.MESSAGE_DELETE_TAG_SUCCESS, tagToDelete);
-
-        try {
-            expectedModel.deleteTag(tagToDelete);
-        } catch (TagNotFoundException e) {
-            e.printStackTrace();
-        }
-
-        assertCommandSuccess(deleteTagCommand, model, expectedMessage, expectedModel);
-    }
-
-    @Test
-    public void execute_deleteTag_tagNotFoundFailure() throws Exception {
-
-        try {
-            tagToDelete = Tag.getInstance(Tag.FRAGILE.toString());
-        } catch (IllegalValueException e) {
-            e.printStackTrace();
-        }
-
-        deleteTagCommand = prepareCommand(tagToDelete);
-
-        String exceptionMessage = String.format(DeleteTagCommand.MESSAGE_INVALID_DELETE_TAG_NOT_FOUND, tagToDelete);
-
-        assertCommandFailure(deleteTagCommand, model, exceptionMessage);
-    }
-
-    @Test
-    public void execute_deleteTag_tagNotValid() throws Exception {
-
-        String exceptionMessage = "";
-
-        try {
-            tagToDelete = Tag.getInstance("!@#$%^&*()");
-        } catch (IllegalValueException e) {
-            exceptionMessage = e.getMessage();
-        }
-
-        String expectedMessage = Tag.MESSAGE_TAG_CONSTRAINTS;
-
-        assertEquals(expectedMessage, exceptionMessage);
-    }
-
-    private DeleteTagCommand prepareCommand(Tag target) {
-        DeleteTagCommand deleteTagCommand = new DeleteTagCommand(target);
-        deleteTagCommand.setData(model, new CommandHistory(), new UndoRedoStack());
-        return deleteTagCommand;
-    }
-
-    @Test
-    public void equals() {
-        Tag flammable = null;
-        Tag fragile = null;
-        try {
-            flammable = Tag.getInstance(VALID_TAG_FLAMMABLE.toLowerCase());
-            fragile = Tag.getInstance(VALID_TAG_FRAGILE);
-        } catch (IllegalValueException e) {
-            e.printStackTrace();
-        }
-
-        DeleteTagCommand deleteUrgentTagCommand = new DeleteTagCommand(flammable);
-        DeleteTagCommand deleteFragileTagCommand = new DeleteTagCommand(fragile);
-
-        // same object -> returns true
-        assertTrue(deleteUrgentTagCommand.equals(deleteUrgentTagCommand));
-
-        // same values -> returns true
-        DeleteTagCommand deleteUrgentTagCommandCopy = new DeleteTagCommand(flammable);
-        assertTrue(deleteUrgentTagCommand.equals(deleteUrgentTagCommandCopy));
-
-        // different types -> returns false
-        assertFalse(deleteUrgentTagCommand.equals(1));
-
-        // null -> returns false
-        assertFalse(deleteUrgentTagCommand.equals(null));
-
-        // different parcel -> returns false
-        assertFalse(deleteUrgentTagCommand.equals(deleteFragileTagCommand));
-    }
-}
 ```
 ###### \java\seedu\address\logic\commands\EditCommandTest.java
 ``` java
@@ -259,152 +719,6 @@ public class DeleteTagCommandTest {
         assertTrue(model.getTabIndex().equals(TAB_ALL_PARCELS));
         model.deleteParcel(HOON);
         model.deleteParcel(IDA);
-```
-###### \java\systemtests\DeleteTagCommandSystemTest.java
-``` java
-package systemtests;
-
-import static seedu.address.commons.core.Messages.MESSAGE_UNKNOWN_COMMAND;
-import static seedu.address.logic.commands.CommandTestUtil.VALID_TAG_FLAMMABLE;
-import static seedu.address.logic.commands.CommandTestUtil.VALID_TAG_FROZEN;
-import static seedu.address.logic.commands.DeleteTagCommand.MESSAGE_DELETE_TAG_SUCCESS;
-import static seedu.address.logic.commands.DeleteTagCommand.MESSAGE_INVALID_DELETE_TAG_NOT_FOUND;
-import static seedu.address.testutil.TestUtil.getParcel;
-import static seedu.address.testutil.TypicalIndexes.INDEX_FIRST_PARCEL;
-
-import java.util.Iterator;
-
-import org.junit.Test;
-
-import seedu.address.commons.core.index.Index;
-import seedu.address.commons.exceptions.IllegalValueException;
-import seedu.address.logic.commands.DeleteTagCommand;
-import seedu.address.logic.commands.RedoCommand;
-import seedu.address.logic.commands.UndoCommand;
-import seedu.address.model.Model;
-import seedu.address.model.parcel.ReadOnlyParcel;
-import seedu.address.model.tag.Tag;
-import seedu.address.model.tag.exceptions.TagInternalErrorException;
-import seedu.address.model.tag.exceptions.TagNotFoundException;
-
-public class DeleteTagCommandSystemTest extends AddressBookSystemTest {
-
-    @Test
-    public void deleteTag() throws IllegalValueException {
-        /* ---------------- Performing deleteTag operation while an unfiltered list is being shown ---------------- */
-
-        /* Case: delete the first parcel in the list, command with leading spaces and trailing spaces -> deleted */
-        Model expectedModel = getModel();
-
-        ReadOnlyParcel targetParcel = getParcel(expectedModel, INDEX_FIRST_PARCEL);
-
-        Iterator<Tag> targetTags = targetParcel.getTags().iterator();
-        Tag targetTag = null;
-
-        if (targetTags.hasNext()) {
-            targetTag = targetTags.next();
-        }
-
-        String command = "     " + DeleteTagCommand.COMMAND_WORD + "      " + targetTag.toString() + "       ";
-
-        Tag deletedTag = removeTag(expectedModel, targetTag);
-        String expectedResultMessage = String.format(MESSAGE_DELETE_TAG_SUCCESS, deletedTag);
-        assertCommandSuccess(command, expectedModel, expectedResultMessage);
-
-        Model modelBeforeDeletingLast = getModel();
-        targetTag = Tag.getInstance(VALID_TAG_FLAMMABLE);
-
-        assertCommandSuccess(targetTag);
-
-        /* Case: undo deleting the previous tag in the list -> deleted tag restored */
-        command = UndoCommand.COMMAND_WORD;
-        expectedResultMessage = UndoCommand.MESSAGE_SUCCESS;
-        assertCommandSuccess(command, expectedModel, expectedResultMessage);
-
-        /* Case: redo deleting the last parcel in the list -> last tag deleted again */
-        command = RedoCommand.COMMAND_WORD;
-        removeTag(modelBeforeDeletingLast, targetTag);
-        expectedResultMessage = RedoCommand.MESSAGE_SUCCESS;
-        assertCommandSuccess(command, modelBeforeDeletingLast, expectedResultMessage);
-
-        /* ------------------------------- Performing invalid deleteTag operation ----------------------------------- */
-
-        /* Case: invalid arguments (tag not founds) -> rejected */
-        expectedResultMessage = String.format(MESSAGE_INVALID_DELETE_TAG_NOT_FOUND,
-                Tag.getInstance(Tag.FROZEN.toString()));
-        assertCommandFailure(DeleteTagCommand.COMMAND_WORD + " " + VALID_TAG_FROZEN.toString(),
-                expectedResultMessage);
-
-        /* Case: mixed case command word -> rejected */
-        assertCommandFailure("DelETEtAG friends", MESSAGE_UNKNOWN_COMMAND);
-    }
-
-    /**
-     * Removes the {@code ReadOnlyParcel} at the specified {@code index} in {@code model}'s address book.
-     * @return the removed parcel
-     */
-    private Tag removeTag(Model model, Tag targetTag) {
-        try {
-            model.deleteTag(targetTag);
-        } catch (TagNotFoundException | TagInternalErrorException e) {
-            throw new AssertionError("targetTag is retrieved from model.");
-        }
-        return targetTag;
-    }
-
-    /**
-     * Deletes the tag at {@code toDelete} by creating a default {@code DeleteTagCommand} using {@code toDelete} and
-     * performs the same verification as {@code assertCommandSuccess(String, Model, String)}.
-     * @see DeleteTagCommandSystemTest#assertCommandSuccess(String, Model, String)
-     */
-    private void assertCommandSuccess(Tag toDelete) {
-        Model expectedModel = getModel();
-        Tag deletedTag = removeTag(expectedModel, toDelete);
-        String expectedResultMessage = String.format(MESSAGE_DELETE_TAG_SUCCESS, deletedTag);
-
-        assertCommandSuccess(
-                DeleteTagCommand.COMMAND_WORD + " " + toDelete.toString(), expectedModel, expectedResultMessage);
-    }
-
-    /**
-     * Performs the same verification as {@code assertCommandSuccess(String, Model, String)} except that the browser url
-     * and selected card are expected to update accordingly depending on the card at {@code expectedSelectedCardIndex}.
-     * @see DeleteTagCommandSystemTest#assertCommandSuccess(String, Model, String)
-     * @see AddressBookSystemTest#assertSelectedCardChanged(Index)
-     */
-    private void assertCommandSuccess(String command, Model expectedModel, String expectedResultMessage) {
-        executeCommand(command);
-        assertApplicationDisplaysExpected("", expectedResultMessage, expectedModel);
-
-        assertCommandBoxShowsDefaultStyle();
-        assertStatusBarUnchangedExceptSyncStatus();
-    }
-
-    /**
-     * Executes {@code command} and in addition,<br>
-     * 1. Asserts that the command box displays {@code command}.<br>
-     * 2. Asserts that result display box displays {@code expectedResultMessage}.<br>
-     * 3. Asserts that the model related components equal to the current model.<br>
-     * 4. Asserts that the browser url, selected card and status bar remain unchanged.<br>
-     * 5. Asserts that the command box has the error style.<br>
-     * Verifications 1 to 3 are performed by
-     * {@code AddressBookSystemTest#assertApplicationDisplaysExpected(String, String, Model)}.<br>
-     * @see AddressBookSystemTest#assertApplicationDisplaysExpected(String, String, Model)
-     */
-    private void assertCommandFailure(String command, String expectedResultMessage) {
-        Model expectedModel = getModel();
-
-        executeCommand(command);
-        assertApplicationDisplaysExpected(command, expectedResultMessage, expectedModel);
-        assertSelectedCardUnchanged();
-        assertCommandBoxShowsErrorStyle();
-        assertStatusBarUnchanged();
-    }
-}
-```
-###### \java\systemtests\DeleteTagCommandSystemTest.java
-``` java
-
 ```
 ###### \java\systemtests\EditCommandSystemTest.java
 ``` java
