@@ -1,2 +1,21 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addressbook/>
+<addressbook>
+    <parcels>
+        <trackingNumber>RR231476598SG</trackingNumber>
+        <name>Amy Bee</name>
+        <phone>11111111</phone>
+        <email>amy@example.com</email>
+        <address>Block 312, Amy Street 1 S123123</address>
+        <deliveryDate>01-01-2001</deliveryDate>
+        <status>DELIVERING</status>
+    </parcels>
+    <parcels>
+        <trackingNumber>RR123456897SG</trackingNumber>
+        <name>Bob Choo</name>
+        <phone>22222222</phone>
+        <email>bob@example.com</email>
+        <address>Block 123, Bobby Street 3 S456456</address>
+        <deliveryDate>02-02-1990</deliveryDate>
+        <status>COMPLETED</status>
+    </parcels>
+</addressbook>
