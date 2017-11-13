@@ -75,7 +75,7 @@ the particular parcel in the *Parcel List Panel* (Refer to No. 6 below).
 delivered parcels, click on the `Completed Parcels` tab.
 6. *Parcel Card* - The details of a parcel is showed here.
 7. *Parcel List Panel* - The list of parcels in your inventory is showed here.
-7. *Status Bar Footer* - You can view a summary of the parcels in your inventory here.
+8. *Status Bar Footer* - You can view a summary of the parcels in your inventory here.
 
 //tag::browser[]
 === Google Maps Browser
