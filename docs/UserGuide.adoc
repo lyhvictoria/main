@@ -138,7 +138,6 @@ _Figure 4.22.2 : Tooltip to show more of John's address_
 //end::tooltip[]
 
 //tag::gui-tab[]
-
 === GUI tab mechanism
 
 To help you organise between the parcels you have delivered and the parcels you have delivered, Ark provides you two
@@ -173,6 +172,7 @@ _Figure 4.4.1 : Overdue Parcels Popup Window_
 
 //end::overduePopup[]
 
+//tag::parcel-fields[]
 == Parcel Fields
 
 [#name]
@@ -195,7 +195,7 @@ The Tracking Number field represents the tracking number of the parcels.
 This field allows you to add tracking numbers to your parcels. Tracking numbers allow you to keep track of the parcels
 that are in your possession. This field is important because a single person can have many parcels belonging to
 him. Hence, you can use our Tracking Number to differentiate between the different parcels that are allocated to a
-single recipient. You can also use tracking numbers to identify specific parcels to be allocated
+single recipient. You can also use tracking numbers to identify specific parcels.
 
 [NOTE]
 Ark only supports tracking numbers for registered articles managed by SingPost at this instance. These
@@ -344,7 +344,7 @@ Values other than the above values will be rejected. e.g. `PROCESSING`, `PROCESS
 [#tags]
 === Tags Field: Delivery Tags of Parcel
 
-`Tag`s are used to indicate how the parcel should be handled. Tags can contain one or more of the following `Tag`s:
+`Tags` are used to indicate how the parcel should be handled. Tags can contain one or more of the following `Tag`:
 
 [width="100%",cols="20%,<80%",options="header",]
 |=======================================================================
@@ -363,6 +363,7 @@ to add a `FROZEN` `Tag`.
 Values other than the above values will be rejected. e.g. `friends`, `colleagues`.
 If your use of Ark requires more tags to be made available, please contact our team and we will see to your request.
 //end::tags[]
+//end::parcel-fields[]
 
 == Features
 
@@ -802,6 +803,61 @@ The list is sorted whenever there is a change in the list that may potentially d
 of the list so that the user does not have to manually do so.
 
 //end::sortedList[]
+
+//tag::ArkBot[]
+
+=== ArkBot: Telegram Bot Interface for Ark
+==== An Overview
+As a desktop application, isn't it rather cumbersome for a delivery man to check and update information on the go,
+when he is making his deliveries? We thought so to. As such we developed a Telegram Bot Interface for Ark so that the
+delivery man would be able to conveniently see which deliveries he has remaining and their addresses. Furthermore,
+he will be able to mark the deliveries as complete easily from the convenience of his phone.
+
+Like all Telegram Bots, each command must be prefixed with a `/` character. So if I were to want to trigger the help
+command, I would send `/help` to ArkBot. The command formats are identical to that of Ark to make things easy to recall.
+
+==== ArkBot Commands
+Here the commands that are available in ArkBot.
+
+[width="100%",cols="60%,<40%",options="header",]
+|=======================================================================
+|Command | Description
+|/all #/TRACKING_NUMBER n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS d/DELIVERYDATE [s/STATUS] [t/TAG]...`
+ | Adds a parcel.
+|/list | Lists uncompleted parcel deliveries.
+|/find KEYWORD [MORE_KEYWORDS] | List uncompleted parcels with keywords in names.
+|/delete [Parcel Index] | Deletes a parcel.
+|/undo | Undo a command.
+|/redo | Redo a command.
+|/complete [Parcel Index] | Marks a parcel as completed.
+|/complete | Activates listen mode.
+|/cancel | Cancels listen mode.
+|/help | Brings up help dialogue with information on commands.
+|=======================================================================
+
+==== ArkBot Listen Mode
+If `/complete` is entered without a parcel index, ArkBot will enter `listen mode`. In `listen mode`, ArkBot will wait
+for an image QR code to be sent. The QR code must contain details of the parcel and the parcel must be present in the
+Ark's list of parcels.
+
+image::QR_Sample_Interaction.png[width="400"]
+_Figure 6.21.3.1: Sample interaction of sending QR code to ArkBot_
+
+As shown in Figure 6.21.3.1, upon typing `/complete`, ArkBot will prompt the user for an image. If ArkBot is able to
+recognise the parcel, it will reply with the parcel's previous details as shown and mark it as completed on Ark.
+
+If ArkBot is not in `listen mode` and a QR code with parcel details are sent, ArkBot assumes that the user is trying to
+read the information on the QR code and displays it.
+
+==== Configuring ArkBot
+Telegram Bots require an Authorization Token which make them unique. To make the ArkBot respond only
+to your Ark software, head https://core.telegram.org/bots#generating-an-authorization-token[here] to learn
+how to retrieve an Authorization Token from Telegram. After which, enter the authorization token into
+the config.json file that is created in the same folder you placed the Ark software executable file. This token
+is especially important as anyone with access to it will be able to access the information that is sent and received
+by the bot.
+
+//end::ArkBot[]
 
 == FAQ
 
