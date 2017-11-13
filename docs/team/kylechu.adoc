@@ -16,7 +16,6 @@ AddressBook - Level 4 is a desktop address book application used for teaching So
 #Start of Extract [from: User Guide]#
 
 include::../UserGuide.adoc[tag=autocomplete]
-include::../UserGuide.adoc[tag=commandSummary]
 
 #End of Extract#
 
@@ -44,6 +43,10 @@ include::../DeveloperGuide.adoc[tag=autocomplete]
 
 * Updated the add command to make Phone and email fields optional
 (Pull requests https://github.com/CS2103AUG2017-T16-B1/main/pull/114[#114])
+
+* Wrote the Command Summary in the User guide as seen below:
+
+include::../UserGuide.adoc[tag=commandSummary]
 
 == Project: Modulus
 
