@@ -77,7 +77,7 @@
         <trackingNumber>RR000000111SG</trackingNumber>
         <name>Corona</name>
         <phone>NIL</phone>
-        <email>coronaemail@email.com</email>
+        <email>coronaemail@example.com</email>
         <address>House 3, S000003</address>
         <deliveryDate>12-11-2017</deliveryDate>
         <status>OVERDUE</status>
@@ -86,7 +86,7 @@
         <trackingNumber>RR000001111SG</trackingNumber>
         <name>Darryl</name>
         <phone>94444444</phone>
-        <email>darrylemail@email.com</email>
+        <email>darrylemail@example.com</email>
         <address>House 4, S000004</address>
         <deliveryDate>12-11-2017</deliveryDate>
         <status>OVERDUE</status>
@@ -123,7 +123,7 @@
         <trackingNumber>RR000000222SG</trackingNumber>
         <name>Harry</name>
         <phone>NIL</phone>
-        <email>harryemail@email.com</email>
+        <email>harryemail@example.com</email>
         <address>House 8, S000008</address>
         <deliveryDate>18-11-2017</deliveryDate>
         <status>PENDING</status>
@@ -132,7 +132,7 @@
         <trackingNumber>RR000002222SG</trackingNumber>
         <name>Ireen</name>
         <phone>90999999</phone>
-        <email>ireenemail@email.com</email>
+        <email>ireenemail@example.com</email>
         <address>House 9, S000009</address>
         <deliveryDate>18-11-2017</deliveryDate>
         <status>PENDING</status>
@@ -169,7 +169,7 @@
         <trackingNumber>RR000000333SG</trackingNumber>
         <name>Nathan</name>
         <phone>NIL</phone>
-        <email>nathanemail@email.com</email>
+        <email>nathanemail@example.com</email>
         <address>House 13, S000013</address>
         <deliveryDate>18-11-2017</deliveryDate>
         <status>DELIVERING</status>
@@ -178,7 +178,7 @@
         <trackingNumber>RR000003333SG</trackingNumber>
         <name>Marryl</name>
         <phone>91333333</phone>
-        <email>marrylemail@email.com</email>
+        <email>marrylemail@example.com</email>
         <address>House 14, S000014</address>
         <deliveryDate>18-11-2017</deliveryDate>
         <status>DELIVERING</status>
@@ -241,7 +241,7 @@
         <trackingNumber>RR000066666SG</trackingNumber>
         <name>Omega</name>
         <phone>93000000</phone>
-        <email>omega@email.com</email>
+        <email>omega@example.com</email>
         <address>House 30, S000030</address>
         <deliveryDate>20-11-2017</deliveryDate>
         <status>COMPLETED</status>
@@ -252,7 +252,7 @@
         <trackingNumber>RR000000007SG</trackingNumber>
         <name>Epsilon</name>
         <phone>93111111</phone>
-        <email>epsilon@email.com</email>
+        <email>epsilon@example.com</email>
         <address>House 31, S000031</address>
         <deliveryDate>20-11-2017</deliveryDate>
         <status>COMPLETED</status>
@@ -263,7 +263,7 @@
         <trackingNumber>RR000000077SG</trackingNumber>
         <name>Phi</name>
         <phone>93222222</phone>
-        <email>phi@email.com</email>
+        <email>phi@example.com</email>
         <address>House 32, S000032</address>
         <deliveryDate>20-11-2017</deliveryDate>
         <status>COMPLETED</status>
@@ -274,7 +274,7 @@
         <trackingNumber>RR000000777SG</trackingNumber>
         <name>Teta</name>
         <phone>93333333</phone>
-        <email>teta@email.com</email>
+        <email>teta@example.com</email>
         <address>House 33, S000033</address>
         <deliveryDate>20-11-2017</deliveryDate>
         <status>COMPLETED</status>
@@ -301,7 +301,7 @@
         <trackingNumber>RR000000444SG</trackingNumber>
         <name>Randy</name>
         <phone>NIL</phone>
-        <email>randyemail@email.com</email>
+        <email>randyemail@example.com</email>
         <address>House 18, S000018</address>
         <deliveryDate>25-11-2017</deliveryDate>
         <status>PENDING</status>
@@ -310,7 +310,7 @@
         <trackingNumber>RR000004444SG</trackingNumber>
         <name>Sandy</name>
         <phone>91999999</phone>
-        <email>sandyemail@email.com</email>
+        <email>sandyemail@example.com</email>
         <address>House 19, S000019</address>
         <deliveryDate>25-11-2017</deliveryDate>
         <status>PENDING</status>
@@ -329,7 +329,7 @@
         <trackingNumber>RR000007777SG</trackingNumber>
         <name>Lamda</name>
         <phone>93444444</phone>
-        <email>lamda@email.com</email>
+        <email>lamda@example.com</email>
         <address>House 34, S000034</address>
         <deliveryDate>25-12-2017</deliveryDate>
         <status>COMPLETED</status>
@@ -338,7 +338,7 @@
         <trackingNumber>RR000077777SG</trackingNumber>
         <name>Pen Gwyn</name>
         <phone>93555555</phone>
-        <email>coldbirb@email.com</email>
+        <email>coldbirb@example.com</email>
         <address>House 35, S000035</address>
         <deliveryDate>25-12-2017</deliveryDate>
         <status>COMPLETED</status>
@@ -347,7 +347,7 @@
         <trackingNumber>RR000000008SG</trackingNumber>
         <name>Po Tato</name>
         <phone>NIL</phone>
-        <email>potato@email.com</email>
+        <email>potato@example.com</email>
         <address>House 36, S000036</address>
         <deliveryDate>25-12-2017</deliveryDate>
         <status>COMPLETED</status>
@@ -356,7 +356,7 @@
         <trackingNumber>RR000000088SG</trackingNumber>
         <name>Goose</name>
         <phone>NIL</phone>
-        <email>goose@email.com</email>
+        <email>goose@example.com</email>
         <address>House 37, S000037</address>
         <deliveryDate>25-12-2017</deliveryDate>
         <status>COMPLETED</status>
@@ -365,7 +365,7 @@
         <trackingNumber>RR000000888SG</trackingNumber>
         <name>Tacitus</name>
         <phone>NIL</phone>
-        <email>tacitus@email.com</email>
+        <email>tacitus@example.com</email>
         <address>House 38, S000038</address>
         <deliveryDate>25-12-2017</deliveryDate>
         <status>COMPLETED</status>
@@ -374,7 +374,7 @@
         <trackingNumber>RR000008888SG</trackingNumber>
         <name>Jiao Ciao</name>
         <phone>NIL</phone>
-        <email>workhorse@email.com</email>
+        <email>workhorse@example.com</email>
         <address>House 39, S000039</address>
         <deliveryDate>25-12-2017</deliveryDate>
         <status>COMPLETED</status>
@@ -383,7 +383,7 @@
         <trackingNumber>RR000088888SG</trackingNumber>
         <name>Stanley</name>
         <phone>NIL</phone>
-        <email>bob@email.com</email>
+        <email>bob@example.com</email>
         <address>House 40, S000040</address>
         <deliveryDate>25-12-2017</deliveryDate>
         <status>COMPLETED</status>
