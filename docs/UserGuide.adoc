@@ -736,6 +736,12 @@ _Figure 6.15.12 : Pressing kbd:[Tab] will cycle to the next available index_
 * `add` + kbd:[Tab] + kbd:[Tab] (auto-completes with `edit #/` on the first tab and then cycles
   to `edit n/` on the second tab)
 
+
+[NOTE]
+If you try to move on the the next prefix by pressing kbd:[Space] followed by kbd:[Tab], Ark will still detect the
+prefix as missing. Thus, the next prefix filled might be the same as the current prefix. +
+e.g If the current text in the text field is `add \#/` you press kbd:[Space] followed by kbd:[Tab], the result you will
+get is `add #/ #/` since the value of `#/` has not been filled in yet.
 //end::autocomplete[]
 
 === Saving the data
