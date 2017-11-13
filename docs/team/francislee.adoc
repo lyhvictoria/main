@@ -15,7 +15,7 @@ Below you can take a look at the segments of Ark that I've written. Functional c
 directly affects the performance and usability of Ark. Whereas test code refers to code written
 to automatically test the features I've implemented.
 
-*Code contributed*: [https://github.com/CS2103AUG2017-T16-B1/main/blob/master/collated/main/fustilio.md[Functional code]][https://github.com/CS2103AUG2017-T16-B1/main/blob/master/collated/test/fustilio.md[Test code]]
+*Code contributed*: [https://github.com/CS2103AUG2017-T16-B1/main/blob/master/collated/main/fustilio.md[Functional code]][https://github.com/CS2103AUG2017-T16-B1/main/blob/master/collated/test/fustilio.md[Test code]][https://github.com/CS2103AUG2017-T16-B1/main/blob/master/collated/unused/fustilio.md[Unused code]]
 
 === Enhancement Added: Delivery Dates field
 

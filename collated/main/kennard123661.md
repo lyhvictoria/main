@@ -10,7 +10,7 @@ public class ImportCommand extends UndoableCommand {
 
     public static final String MESSAGE_USAGE = COMMAND_WORD + ": Adds the data of a storage file stored in "
             + "data/import/ directory into Ark.\n"
-            + "Parameters: FILE (Must be a valid addressbook file stored in xml format) i.e.\n"
+            + "Parameters: FILE (Must be a valid Ark storage file stored in xml format) i.e.\n"
             + "Example: " + COMMAND_WORD + " ark_storage";
 
     public static final String MESSAGE_SUCCESS_SUMMARY = "Summary: %1$d parcels added and %2$d duplicate "
@@ -18,8 +18,9 @@ public class ImportCommand extends UndoableCommand {
     public static final String MESSAGE_SUCCESS_BODY = "Parcels added: %3$s\nDuplicate Parcels: %4$s";
     public static final String MESSAGE_SUCCESS = MESSAGE_SUCCESS_SUMMARY + MESSAGE_SUCCESS_BODY;
 
-    public static final String MESSAGE_FAILURE_DUPLICATE_PARCELS = "All parcels in the imported save file will create "
+    public static final String MESSAGE_INVALID_DUPLICATE_PARCELS = "All parcels in the imported save file will create "
             + "duplicate parcels";
+    public static final String MESSAGE_INVALID_FILE_EMPTY = "File to import is empty";
 
     private final List<ReadOnlyParcel> parcels;
 
@@ -32,14 +33,20 @@ public class ImportCommand extends UndoableCommand {
 
     /**
      * Adds all unique parcels in {@code parcels} to the {@link UniqueParcelList} of the {@link AddressBook}. Ignores
-     * parcels that will create duplicates in the {@link UniqueParcelList}
+     * parcels that will create duplicates in the {@link UniqueParcelList}. To see the internal logic, see
+     * {@link ModelManager#addAllParcels(List, List, List)} for more information
      *
      * @return {@link CommandResult} created by {@link ImportCommand#executeUndoableCommand()}
      * @throws CommandException if {@code parcels} contain only duplicate parcels.
+     * @see ModelManager#addAllParcels(List, List, List)
      */
     @Override
     public CommandResult executeUndoableCommand() throws CommandException {
         requireNonNull(model);
+
+        if (parcels.isEmpty()) {
+            throw new CommandException(MESSAGE_INVALID_FILE_EMPTY);
+        }
 
         List<ReadOnlyParcel> uniqueParcels = new ArrayList<>(); // list of unique parcels added to Ark.
         List<ReadOnlyParcel> duplicateParcels = new ArrayList<>(); // list of duplicate parcels that are not added
@@ -47,7 +54,7 @@ public class ImportCommand extends UndoableCommand {
 
         // check if all parcels are duplicates
         if (storedParcels.containsAll(parcels)) {
-            throw new CommandException(MESSAGE_FAILURE_DUPLICATE_PARCELS);
+            throw new CommandException(MESSAGE_INVALID_DUPLICATE_PARCELS);
         }
 
         model.addAllParcels(parcels, uniqueParcels, duplicateParcels);
@@ -60,7 +67,7 @@ public class ImportCommand extends UndoableCommand {
     }
 
     /**
-     * @return formatted list of parcels added/not added for ImportCommand execution result.
+     * Returns formatted list of parcels added/not added for ImportCommand execution result.
      */
     public static String getImportFormattedParcelListString(List<ReadOnlyParcel> parcels) {
         if (parcels.size() == 0) {
@@ -110,14 +117,6 @@ public class ImportCommand extends UndoableCommand {
      */
     ObservableList<ReadOnlyParcel> getUncompletedParcelList();
 
-    /** Sets the active list of {@link Model} at the particular instance
-     *
-     * @param isCompleted if true, the active list in {@link Model} will be set to the list of {@link ReadOnlyParcel}s
-     *                    with {@link Status} that is COMPLETED. Otherwise, it will be set the list of parcels
-     *                    with {@link Status} that is not COMPLETED.
-     */
-    void setActiveList(boolean isCompleted);
-
     /** Returns an unmodifiable view of the current active list in {@link Model} at the instance it waas called. */
     ObservableList<ReadOnlyParcel> getActiveList();
 ```
@@ -147,14 +146,6 @@ public class ImportCommand extends UndoableCommand {
     }
 
     /**
-     * @see Logic#setActiveList(boolean)
-     */
-    @Override
-    public void setActiveList(boolean isCompleted) {
-        model.setActiveList(isCompleted);
-    }
-
-    /**
      * @see Logic#getUncompletedParcelList()
      */
     @Override
@@ -180,9 +171,14 @@ public class ImportCommand extends UndoableCommand {
  */
 public class ImportCommandParser implements Parser<ImportCommand> {
 
+    public static final String IMPORT_FILE_DIRECTORY = "./data/import/";
+
     public static final String FILE_NAME_VALIDATION_REGEX = "([a-zA-Z0-9_]+)";
-    public static final String MESSAGE_FILE_NAME_INVALID = "File name should be an xml file that only contains "
-            + "alphanumeric or underscore characters";
+    public static final String FILE_NAME_CONSTRAINTS = "File should be a valid Ark .xml storage file with a naming"
+            + " convention that only contains alphanumeric or underscore characters";
+
+    public static final String MESSAGE_INVALID_FILE_NAME = String.format(MESSAGE_INVALID_COMMAND_FORMAT,
+            ImportCommand.MESSAGE_USAGE) + "\nMore Info: " + FILE_NAME_CONSTRAINTS;
 
     /**
      * Parses the given {@code String} of arguments in the context of the {@link ImportCommand}
@@ -195,22 +191,23 @@ public class ImportCommandParser implements Parser<ImportCommand> {
         String trimmedArgument = arg.trim();
 
         if (!isValidFileName(trimmedArgument)) {
-            throw new ParseException(MESSAGE_FILE_NAME_INVALID);
+            throw new ParseException(MESSAGE_INVALID_FILE_NAME);
         }
 
         try {
-            ReadOnlyAddressBook readOnlyAddressBook = ParserUtil.parseImportFilePath("./data/import/"
-                    + trimmedArgument + ".xml");
-            return new ImportCommand(readOnlyAddressBook.getParcelList());
+            String fullPath = IMPORT_FILE_DIRECTORY + trimmedArgument + ".xml";
+            ReadOnlyAddressBook readOnlyAddressBook = ParserUtil.parseImportFilePath(fullPath);
+
+            List<ReadOnlyParcel> parcels = readOnlyAddressBook.getParcelList();
+
+            return new ImportCommand(parcels);
         } catch (IllegalValueException ive) {
-            throw new ParseException(
-                    String.format(MESSAGE_INVALID_COMMAND_FORMAT, ImportCommand.MESSAGE_USAGE) + "\nMore Info: "
-                            + ive.getMessage());
+            throw new ParseException(String.format(ive.getMessage()));
         }
     }
 
     /**
-     * checks if the file is a valid file name using {@code FILE_NAME_VALIDATION_REGEX}
+     * returns true if the file is a valid file name using {@code FILE_NAME_VALIDATION_REGEX}
      */
     public static boolean isValidFileName(String fileName) {
         return fileName.matches(FILE_NAME_VALIDATION_REGEX);
@@ -245,7 +242,20 @@ public class ImportCommandParser implements Parser<ImportCommand> {
 ###### \java\seedu\address\model\Model.java
 ``` java
     /**
-     * Adds all unique {@link Parcel}s stored in {@code parcels} to the {@link AddressBook}
+     * Sets the active list in the model.
+     *
+     * @param event the {@link JumpToTabRequestEvent} contains the index of the selected Tab. The selected tab will
+     *              provide information on the active list to select. If the value of
+     *              {@link JumpToTabRequestEvent#targetIndex} is zero, then {@link ModelManager#completedParcels}
+     *              is set as the new active list. Otherwise, the {@link ModelManager#uncompletedParcels} is set as
+     *              the active list {@link ModelManager#activeParcels}
+     */
+    void setActiveList(JumpToTabRequestEvent event);
+```
+###### \java\seedu\address\model\Model.java
+``` java
+    /**
+     * Adds all unique {@link Parcel}s stored in {@code parcels} to the {@link AddressBook} and sort the parcel list.
      *
      * @param parcels the list of parcels to add into the {@link AddressBook}.
      * @param uniqueParcels the list of unique parcels stored in {@param parcels} that will not create duplicate parcels
@@ -277,9 +287,12 @@ public class ImportCommandParser implements Parser<ImportCommand> {
 ```
 ###### \java\seedu\address\model\ModelManager.java
 ``` java
-    @Override
-    public void setActiveList(boolean isCompleted) {
+    @Subscribe @Override
+    public void setActiveList(JumpToTabRequestEvent event) {
+        boolean isCompleted = event.targetIndex == INDEX_SECOND_TAB.getZeroBased();
         activeParcels = isCompleted ? completedParcels : uncompletedParcels;
+        logger.info("Active list now set to "
+                + (isCompleted ? "completed parcels list." : "uncompleted parcels list."));
     }
 ```
 ###### \java\seedu\address\model\ModelManager.java
@@ -288,16 +301,22 @@ public class ImportCommandParser implements Parser<ImportCommand> {
     public synchronized void addAllParcels(List<ReadOnlyParcel> parcels, List<ReadOnlyParcel> uniqueParcels,
                                            List<ReadOnlyParcel> duplicateParcels) {
 
+        assert parcels != null : "parcels should not be null";
+        assert uniqueParcels != null : "uniqueParcels should not be null";
+        assert duplicateParcels != null : "duplicateParcels should not be null";
+
         for (ReadOnlyParcel parcel : parcels) {
-            ReadOnlyParcel parcelToAdd = new Parcel(parcel);
             try {
-                addressBook.addParcel(parcelToAdd); // throws duplicate parcel exception if parcel is non-unique
-                uniqueParcels.add(parcelToAdd);
+                // throws duplicate parcel exception if parcel is non-unique
+                addressBook.addParcel(parcel);
+
+                uniqueParcels.add(parcel);
             } catch (DuplicateParcelException ive) {
-                duplicateParcels.add(parcelToAdd);
+                duplicateParcels.add(parcel);
             }
         }
 
+        maintainSorted();
         updateFilteredParcelList(PREDICATE_SHOW_ALL_PARCELS);
         indicateAddressBookChanged();
     }
@@ -571,38 +590,45 @@ public enum Tag {
 ```
 ###### \java\seedu\address\storage\StorageManager.java
 ``` java
-    public StorageManager(AddressBookStorage addressBookStorage, UserPrefsStorage userPrefsStorage) {
-        super();
-        this.addressBookStorage = addressBookStorage;
-        this.userPrefsStorage = userPrefsStorage;
-
+    /**
+     * Backup {@code addressBookStorage} and stores the file into the backup file.
+     *
+     * @param addressBookStorage the storage data to backup.
+     */
+    private void backup(AddressBookStorage addressBookStorage) {
         Optional<ReadOnlyAddressBook> addressBookOptional;
+
         try {
             addressBookOptional = addressBookStorage.readAddressBook();
 
             if (addressBookOptional.isPresent()) {
-                backupAddressBook(addressBookOptional.get());
-                logger.info("AddressBook present, back up success!");
+                backup(addressBookOptional.get());
+                logger.info("Storage file present, back up success!");
             } else {
-                logger.warning("AddressBook not present, backup not possible.");
+                logger.warning("Storage file not present, backup not possible.");
             }
+
         } catch (DataConversionException e) {
             logger.warning("Data file not in the correct format. "
-                    + "Backup of addressbook not available for this instance.");
+                    + "Backup of Ark not available for this instance.");
         } catch (IOException e) {
             logger.warning("Problem while reading from the file. "
-                    + "Backup of addressbook not available for this instance.");
+                    + "Backup of Ark not available for this instance.");
         }
     }
-```
-###### \java\seedu\address\storage\StorageManager.java
-``` java
-    public void backupAddressBook(ReadOnlyAddressBook addressBook) throws IOException {
+
+    /**
+     * Saves the {@code addressBook} into backup file given by {@link StorageManager#getBackupStorageFilePath()}
+     *
+     * @param addressBook the backup addressBook
+     * @throws IOException if there is an issue saving {@code addressBook} into the backup file.
+     */
+    public void backup(ReadOnlyAddressBook addressBook) throws IOException {
         saveAddressBook(addressBook, getBackupStorageFilePath());
     }
 
     /**
-     * @return filepath to AddressBook backup file.
+     * Returns backup file path.
      */
     public String getBackupStorageFilePath() {
         return addressBookStorage.getAddressBookFilePath() + "-backup.xml";
@@ -625,19 +651,6 @@ public enum Tag {
      */
     public void initSplitPanePlaceholder() {
         splitPanePlaceholder.setDividerPositions(0.0);
-    }
-```
-###### \java\seedu\address\ui\MainWindow.java
-``` java
-
-    /**
-     * Sets the active list of the model based on the current selected tab index in the Ui of Ark.
-     */
-    @FXML @Subscribe
-    private void handleTabEvent(JumpToTabRequestEvent event) {
-        logic.setActiveList(event.targetIndex == INDEX_SECOND_TAB.getZeroBased());
-        logger.info("Active list now set to " + (event.targetIndex == INDEX_SECOND_TAB.getZeroBased()
-                ? "completed parcels list." : "uncompleted parcels list."));
     }
 ```
 ###### \java\seedu\address\ui\ParcelCard.java
