@@ -41,12 +41,6 @@ public class ParcelListPanel extends UiPart<Region> {
     @FXML
     private TabPane tabPanePlaceholder;
 
-    @FXML
-    private ScrollPane scrollPanePlaceholder1;
-
-    @FXML
-    private ScrollPane scrollPanePlaceholder2;
-
     public ParcelListPanel(ObservableList<ReadOnlyParcel> uncompletedParcels,
                            ObservableList<ReadOnlyParcel> completedParcels) {
         super(FXML);
