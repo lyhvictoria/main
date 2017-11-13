@@ -19,6 +19,22 @@ By: `Team T16-B1`      Since: `Sept 2017`      Licence: `MIT`
 Ark is a parcel delivery management system to help delivery companies manage their parcels and their
 deliveries. This test script is used help testers perform manual testing of Ark.
 
+== How to load the Sample Data into Ark
+.  Ensure you have Java version 1.8.0_60 or later versions installed on your Computer.
++
+[NOTE]
+Having any Java 8 version is not enough. +
+This app will not work with earlier versions of Java 8. +
+
+. Download the latest Ark.jar link:https://github.com/CS2103AUG2017-T16-B1/main/releases[here].
+. Create a folder you want to use as the home folder for your Ark.
+. Copy the Ark.jar file to the home folder.
+. Create a folder named data inside the home folder.
+. Rename the [T16-B1][ Ark]SampleData.xml file  to addressbook.xml in all lower case.
+. Copy the addressbook.xml file and paste it inside the data folder.
+. The sample data is now loaded and ready for testing.
+. Double-click the Ark.jar file to start the app. The sample data should appear in a few seconds.
+
 == Features to Test
 
 *Test Format*
@@ -244,6 +260,66 @@ alphanumeric characters. +
 *Input:* `undo` -> `select (any valid index)` -> `import [T16-B1][Ark]ark_save` +
 *Expected output:* Import command removes the selection in the list but browser panel remains unchanged.
 
+=== Tab Autocomplete
+Description: This feature helps you command as well as to fill in your missing indexes and prefixes
+
+==== Manual Testing
+
+*Description:* Autocomplete to command +
+*Input:* `e`(from previous step) -> press kbd:[Tab]
+*Expected output:* The text in the text field becomes `edit`, the results box should display “Multiple matches found: edit exit”
+
+*Description:* Cycle through multiple matching commands +
+*Input:* `edit`(from previous step) -> press kbd:[Space] -> press kbd::[Tab]
+*Expected output:* The text in the text field becomes `exit`, the results box should display “Multiple matches found: edit exit”
+
+*Description:* Cycle through multiple matching commands +
+*Input:* `exit`(from previous step) -> press kbd:[Tab]
+*Expected output:* The text in the text field becomes `edit`, the results box should display “Multiple matches found: edit exit”
+
+*Description:* Autocomplete to missing index +
+*Input:* `edit`(from previous step) -> press kbd:[Space] -> press kbd:[Tab]
+*Expected output:* The text in the text field becomes `edit 1`
+
+*Description:* Cycle through indexes +
+*Input:* `edit 1` (from previous step) -> press kbd:[Tab]
+*Expected output:* The text in the text field becomes `edit 2`
+
+*Description:* Cycle through indexes +
+*Input:* `edit 2` (from previous step) -> press kbd:[Tab]
+*Expected output:* The text in the text field becomes `edit 3`
+
+*Description:* Autocomplete to next missing prefix +
+*Input:* `edit 3` (from previous step) -> press kbd:[Space] -> press kbd:[Tab]
+*Expected output:* The text in the text field becomes `edit 3 #/`
+
+*Description:* Cycle to next missing prefix +
+*Input:* `edit 3 #/` (from previous step) -> press kbd:[Tab]
+*Expected output:* The text in the text field becomes `edit 3 n/`
+
+*Description:* Cycle to next missing prefix +
+*Input:* `edit 3 n/` (from previous step) -> press kbd:[Tab]
+*Expected output:* The text in the text field becomes `edit 3 a/`
+
+*Description:* Cycle to next missing prefix +
+*Input:* `edit 3 a/` (from previous step) -> press kbd:[Tab]
+*Expected output:* The text in the text field becomes `edit 3 d/`
+
+*Description:* Cycle to next missing prefix +
+*Input:* `edit 3 d/` (from previous step) -> press kbd:[Tab]
+*Expected output:* The text in the text field becomes `edit 3 p/`
+
+*Description:* Fill in selected field and tab to next missing prefix +
+*Input:* `edit 3 p/` (from previous step) -> `edit 3 p/123341222`
+*Expected output:* The text in the text field becomes `edit 3 p/123341222 #/`
+
+*Description:* Fill in missing `/` +
+*Input:* ` edit 3 p/123341222 #/`(from previous step) -> `edit 3 p/123341222 e` -> press kbd:[Tab]
+*Expected output:* The text in the text field becomes `edit 3 p/123341222 e/`
+
+*Description:* Fill in selected field and enter command `/` +
+*Input:* ` edit 3 p/123341222 e/`(from previous step) -> `edit 3 p/123341222 e/thisIsAnExampleEmail@example.com` -> press kbd:[Tab]
+*Expected output:* The phone field of the 3rd parcel in Undelivered list will be 123341222 and the email field will be thisIsAnExampleEmail@example.com.
 
 
 
